@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}실시간 투자 신호 현황판{% endblock %}
+
+{% block extra_head %}
+<style>
+    .signals-container {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+    }
+
+    .signal-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .signal-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(550px, 1fr));
+        gap: 30px;
+    }
+
+    .signal-card {
+        background: rgba(22, 25, 32, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 25px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        transition: border-color 0.3s ease;
+    }
+
+    .signal-card:hover {
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .index-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 15px;
+    }
+
+    .index-name-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .index-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .index-subtitle {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .etf-price-box {
+        text-align: right;
+    }
+
+    .etf-price-lbl {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .etf-price-val {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--color-warning);
+    }
+
+    /* Strategy Recommendation Badges */
+    .strategy-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .strategy-box {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .strat-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .recommendation-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 5px;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .status-dot.buy {
+        background-color: #22c55e;
+        box-shadow: 0 0 10px #22c55e;
+    }
+
+    .status-dot.cash {
+        background-color: #f59e0b;
+        box-shadow: 0 0 10px #f59e0b;
+    }
+
+    .status-text {
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .status-text.buy {
+        color: #4ade80;
+    }
+
+    .status-text.cash {
+        color: #fbbf24;
+    }
+
+    .trigger-info {
+        font-size: 11px;
+        color: var(--text-muted);
+        line-height: 1.4;
+    }
+
+    /* Live Counts Section */
+    .counts-section {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 12px;
+        padding: 15px;
+    }
+
+    .count-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .count-lbl {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .count-val {
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    /* History Table */
+    .history-table-wrapper {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .table-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table-signals {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+
+    .table-signals th, .table-signals td {
+        padding: 6px 10px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .table-signals th {
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .table-signals td {
+        color: var(--text-secondary);
+        font-family: monospace;
+    }
+
+    .table-signals td.date-col {
+        font-family: var(--font-sans);
+        color: var(--text-muted);
+    }
+
+    .table-signals tr:hover td {
+        background-color: rgba(255, 255, 255, 0.02);
+        color: var(--text-primary);
+    }
+
+    .net-pos {
+        color: #4ade80 !important;
+        font-weight: 700;
+    }
+
+    .net-neg {
+        color: #f87171 !important;
+        font-weight: 700;
+    }
+
+    @media(max-width: 992px) {
+        .signal-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="signals-container">
+    <div class="signal-header">
+        <h1 class="hero-title"><i class="fa-solid fa-satellite-dish" style="color: var(--color-accent);"></i> 실시간 투자 신호 현황판</h1>
+        <p class="hero-subtitle">코스피 200 동일가중 및 코스닥 150 지수 구성 종목들의 실시간 순환국면(Stage) 분포를 분석하여 최적의 매매 타이밍 신호를 제안합니다.</p>
+    </div>
+
+    <div class="signal-grid">
+        <!-- KOSPI 200 Equal Card -->
+        <div class="signal-card">
+            <div class="index-header">
+                <div class="index-name-wrapper">
+                    <span class="index-title"><i class="fa-solid fa-scale-balanced" style="color: #60a5fa;"></i> 코스피 200 동일가중</span>
+                    <span class="index-subtitle">KOSPI 200 Equal-Weighted</span>
+                </div>
+                <div class="etf-price-box">
+                    <div class="etf-price-lbl">KODEX 200동일가중 (252650)</div>
+                    <div class="etf-price-val">{{ "{:,.0f}".format(kospi200.etf_close) }}원</div>
+                </div>
+            </div>
+
+            <!-- Strategy Recommendations -->
+            <div class="strategy-section">
+                <!-- Strategy 2 -->
+                <div class="strategy-box">
+                    <span class="strat-title"><i class="fa-solid fa-shield-halved" style="color: #4ade80;"></i> 투매 역발상 (EB >= 30)</span>
+                    <div class="recommendation-status">
+                        <span class="status-dot {% if kospi200.strat2.position == 1 %}buy{% else %}cash{% endif %}"></span>
+                        <span class="status-text {% if kospi200.strat2.position == 1 %}buy{% else %}cash{% endif %}">
+                            {% if kospi200.strat2.position == 1 %}BUY / HOLD{% else %}CASH / WAIT{% endif %}
+                        </span>
+                    </div>
+                    <div class="trigger-info">
+                        현재 권장: <strong>{% if kospi200.strat2.position == 1 %}매수 진입 및 유지{% else %}현금 관망 대기{% endif %}</strong><br>
+                        최근 신호: {{ kospi200.strat2.last_signal }} ({{ kospi200.strat2.signal_date }}, {{ "{:,.0f}원".format(kospi200.strat2.signal_price) }})
+                    </div>
+                </div>
+
+                <!-- Strategy 3 -->
+                <div class="strategy-box">
+                    <span class="strat-title"><i class="fa-solid fa-chart-line" style="color: #60a5fa;"></i> 넷 브레드 SMA-10 크로스</span>
+                    <div class="recommendation-status">
+                        <span class="status-dot {% if kospi200.strat3.position == 1 %}buy{% else %}cash{% endif %}"></span>
+                        <span class="status-text {% if kospi200.strat3.position == 1 %}buy{% else %}cash{% endif %}">
+                            {% if kospi200.strat3.position == 1 %}BUY / HOLD{% else %}CASH / WAIT{% endif %}
+                        </span>
+                    </div>
+                    <div class="trigger-info">
+                        현재 권장: <strong>{% if kospi200.strat3.position == 1 %}매수 진입 및 유지{% else %}현금 관망 대기{% endif %}</strong><br>
+                        최근 신호: {{ kospi200.strat3.last_signal }} ({{ kospi200.strat3.signal_date }}, {{ "{:,.0f}원".format(kospi200.strat3.signal_price) }})
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Counts -->
+            <div class="counts-section">
+                <div class="count-box">
+                    <span class="count-lbl" style="color: #60a5fa;">Early Buy</span>
+                    <span class="count-val" style="color: #60a5fa;">{{ kospi200.early_buy }}</span>
+                </div>
+                <div class="count-box">
+                    <span class="count-lbl" style="color: #4ade80;">Stage 1</span>
+                    <span class="count-val" style="color: #4ade80;">{{ kospi200.stage1 }}</span>
+                </div>
+                <div class="count-box">
+                    <span class="count-lbl" style="color: #f87171;">Stage 4</span>
+                    <span class="count-val" style="color: #f87171;">{{ kospi200.stage4 }}</span>
+                </div>
+                <div class="count-box">
+                    <span class="count-lbl" style="color: #e2e8f0;">Net Breadth</span>
+                    <span class="count-val {% if kospi200.net_breadth >= 0 %}net-pos{% else %}net-neg{% endif %}">
+                        {% if kospi200.net_breadth > 0 %}+{% endif %}{{ kospi200.net_breadth }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Historical Table -->
+            <div class="history-table-wrapper">
+                <div class="table-title"><i class="fa-solid fa-list"></i> 최근 10영업일 세부 지표 추이</div>
+                <table class="table-signals">
+                    <thead>
+                        <tr>
+                            <th>날짜</th>
+                            <th>ETF종가</th>
+                            <th>EB</th>
+                            <th>Stage 1</th>
+                            <th>Stage 4</th>
+                            <th>넷 강도</th>
+                            <th>넷 SMA10</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in kospi200.history %}
+                        <tr>
+                            <td class="date-col">{{ row.date }}</td>
+                            <td>{{ "{:,.0f}원".format(row.close) }}</td>
+                            <td>{{ row.early_buy }}</td>
+                            <td>{{ row.stage1 }}</td>
+                            <td>{{ row.stage4 }}</td>
+                            <td class="{% if row.net_breadth >= 0 %}net-pos{% else %}net-neg{% endif %}">
+                                {% if row.net_breadth > 0 %}+{% endif %}{{ row.net_breadth }}
+                            </td>
+                            <td>{{ row.net_sma10 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- KOSDAQ 150 Card -->
+        <div class="signal-card">
+            <div class="index-header">
+                <div class="index-name-wrapper">
+                    <span class="index-title"><i class="fa-solid fa-bolt" style="color: #a78bfa;"></i> 코스닥 150</span>
+                    <span class="index-subtitle">KOSDAQ 150</span>
+                </div>
+                <div class="etf-price-box">
+                    <div class="etf-price-lbl">KODEX 코스닥150 (229200)</div>
+                    <div class="etf-price-val">{{ "{:,.0f}".format(kosdaq150.etf_close) }}원</div>
+                </div>
+            </div>
+
+            <!-- Strategy Recommendations -->
+            <div class="strategy-section">
+                <!-- Strategy 2 -->
+                <div class="strategy-box">
+                    <span class="strat-title"><i class="fa-solid fa-shield-halved" style="color: #4ade80;"></i> 투매 역발상 (EB >= 15)</span>
+                    <div class="recommendation-status">
+                        <span class="status-dot {% if kosdaq150.strat2.position == 1 %}buy{% else %}cash{% endif %}"></span>
+                        <span class="status-text {% if kosdaq150.strat2.position == 1 %}buy{% else %}cash{% endif %}">
+                            {% if kosdaq150.strat2.position == 1 %}BUY / HOLD{% else %}CASH / WAIT{% endif %}
+                        </span>
+                    </div>
+                    <div class="trigger-info">
+                        현재 권장: <strong>{% if kosdaq150.strat2.position == 1 %}매수 진입 및 유지{% else %}현금 관망 대기{% endif %}</strong><br>
+                        최근 신호: {{ kosdaq150.strat2.last_signal }} ({{ kosdaq150.strat2.signal_date }}, {{ "{:,.0f}원".format(kosdaq150.strat2.signal_price) }})
+                    </div>
+                </div>
+
+                <!-- Strategy 3 -->
+                <div class="strategy-box">
+                    <span class="strat-title"><i class="fa-solid fa-chart-line" style="color: #60a5fa;"></i> 넷 브레드 SMA-10 크로스</span>
+                    <div class="recommendation-status">
+                        <span class="status-dot {% if kosdaq150.strat3.position == 1 %}buy{% else %}cash{% endif %}"></span>
+                        <span class="status-text {% if kosdaq150.strat3.position == 1 %}buy{% else %}cash{% endif %}">
+                            {% if kosdaq150.strat3.position == 1 %}BUY / HOLD{% else %}CASH / WAIT{% endif %}
+                        </span>
+                    </div>
+                    <div class="trigger-info">
+                        현재 권장: <strong>{% if kosdaq150.strat3.position == 1 %}매수 진입 및 유지{% else %}현금 관망 대기{% endif %}</strong><br>
+                        최근 신호: {{ kosdaq150.strat3.last_signal }} ({{ kosdaq150.strat3.signal_date }}, {{ "{:,.0f}원".format(kosdaq150.strat3.signal_price) }})
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Counts -->
+            <div class="counts-section">
+                <div class="count-box">
+                    <span class="count-lbl" style="color: #60a5fa;">Early Buy</span>
+                    <span class="count-val" style="color: #60a5fa;">{{ kosdaq150.early_buy }}</span>
+                </div>
+                <div class="count-box">
+                    <span class="count-lbl" style="color: #4ade80;">Stage 1</span>
+                    <span class="count-val" style="color: #4ade80;">{{ kosdaq150.stage1 }}</span>
+                </div>
+                <div class="count-box">
+                    <span class="count-lbl" style="color: #f87171;">Stage 4</span>
+                    <span class="count-val" style="color: #f87171;">{{ kosdaq150.stage4 }}</span>
+                </div>
+                <div class="count-box">
+                    <span class="count-lbl" style="color: #e2e8f0;">Net Breadth</span>
+                    <span class="count-val {% if kosdaq150.net_breadth >= 0 %}net-pos{% else %}net-neg{% endif %}">
+                        {% if kosdaq150.net_breadth > 0 %}+{% endif %}{{ kosdaq150.net_breadth }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Historical Table -->
+            <div class="history-table-wrapper">
+                <div class="table-title"><i class="fa-solid fa-list"></i> 최근 10영업일 세부 지표 추이</div>
+                <table class="table-signals">
+                    <thead>
+                        <tr>
+                            <th>날짜</th>
+                            <th>ETF종가</th>
+                            <th>EB</th>
+                            <th>Stage 1</th>
+                            <th>Stage 4</th>
+                            <th>넷 강도</th>
+                            <th>넷 SMA10</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in kosdaq150.history %}
+                        <tr>
+                            <td class="date-col">{{ row.date }}</td>
+                            <td>{{ "{:,.0f}원".format(row.close) }}</td>
+                            <td>{{ row.early_buy }}</td>
+                            <td>{{ row.stage1 }}</td>
+                            <td>{{ row.stage4 }}</td>
+                            <td class="{% if row.net_breadth >= 0 %}net-pos{% else %}net-neg{% endif %}">
+                                {% if row.net_breadth > 0 %}+{% endif %}{{ row.net_breadth }}
+                            </td>
+                            <td>{{ row.net_sma10 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

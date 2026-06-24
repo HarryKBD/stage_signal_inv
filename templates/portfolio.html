@@ -1,0 +1,588 @@
+{% extends "base.html" %}
+
+{% block title %}포트폴리오 관리{% endblock %}
+
+{% block extra_head %}
+<style>
+    .portfolio-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .portfolio-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 25px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-primary);
+    }
+
+    /* Add Form layout */
+    .portfolio-form-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr auto;
+        gap: 20px;
+        align-items: flex-end;
+    }
+
+    @media (max-width: 768px) {
+        .portfolio-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: relative;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .form-group input, .form-group select {
+        background-color: #161920;
+        border: 1px solid #2f3547;
+        color: #fff;
+        font-family: var(--font-sans);
+        font-size: 14px;
+        padding: 12px 15px;
+        border-radius: 8px;
+        outline: none;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+        border-color: var(--color-accent);
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+    }
+
+    .btn-add-stock {
+        background: #3b82f6;
+        border: none;
+        color: #ffffff;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 45px;
+    }
+
+    .btn-add-stock:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+
+    /* Autocomplete dropdown list styling */
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #1a1e29;
+        border: 1px solid #2f3547;
+        border-radius: 8px;
+        margin-top: 5px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        display: none;
+    }
+
+    .autocomplete-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        transition: background-color 0.2s ease;
+        color: #ffffff;
+        font-size: 13px;
+    }
+
+    .autocomplete-item:hover {
+        background-color: rgba(59, 130, 246, 0.15);
+    }
+
+    .item-ticker-name {
+        font-weight: 600;
+    }
+
+    .item-ticker-code {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-left: 8px;
+        font-family: monospace;
+    }
+
+    .badge-kor {
+        background-color: rgba(241, 73, 73, 0.15);
+        color: #f14949;
+        border: 1px solid rgba(241, 73, 73, 0.3);
+        font-size: 9px;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 4px;
+    }
+
+    .badge-us {
+        background-color: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        font-size: 9px;
+        font-weight: 700;
+        padding: 2px 5px;
+        border-radius: 4px;
+    }
+
+    /* Portfolio table styling */
+    .portfolio-table-wrapper {
+        overflow-x: auto;
+        margin-top: 10px;
+    }
+
+    .portfolio-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 14px;
+    }
+
+    .portfolio-table th {
+        background-color: rgba(255, 255, 255, 0.02);
+        color: var(--text-secondary);
+        font-weight: 600;
+        padding: 15px;
+        border-bottom: 2px solid var(--border-color);
+        font-size: 13px;
+    }
+
+    .portfolio-table td {
+        padding: 15px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    .portfolio-table tr:hover td {
+        background-color: rgba(255, 255, 255, 0.01);
+    }
+
+    .stock-link-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .stock-link {
+        font-weight: 700;
+        color: #60a5fa;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .stock-link:hover {
+        color: #93c5fd;
+        text-decoration: underline;
+    }
+
+    .ticker-sub-info {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-family: monospace;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Status badge colors */
+    .status-badge {
+        font-size: 11px;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .status-good {
+        color: #10b981;
+        background-color: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .status-sell {
+        color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.3);
+        animation: pulse-border 2s infinite;
+    }
+
+    .status-hold {
+        color: #94a3b8;
+        background-color: rgba(148, 163, 184, 0.08);
+        border-color: rgba(148, 163, 184, 0.2);
+    }
+
+    @keyframes pulse-border {
+        0% { border-color: rgba(239, 68, 68, 0.3); }
+        50% { border-color: rgba(239, 68, 68, 0.8); }
+        100% { border-color: rgba(239, 68, 68, 0.3); }
+    }
+
+    /* Small stage badges */
+    .stage-pill {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        display: inline-block;
+    }
+
+    .stage-pill-1 { color: #f14949; background-color: rgba(241, 73, 73, 0.1); border-color: rgba(241, 73, 73, 0.2); }
+    .stage-pill-2 { color: #fb923c; background-color: rgba(251, 146, 60, 0.1); border-color: rgba(251, 146, 60, 0.2); }
+    .stage-pill-3 { color: #fb7185; background-color: rgba(251, 113, 133, 0.1); border-color: rgba(251, 113, 133, 0.2); }
+    .stage-pill-4 { color: #42a5f5; background-color: rgba(66, 165, 245, 0.1); border-color: rgba(66, 165, 245, 0.2); }
+    .stage-pill-5 { color: #a78bfa; background-color: rgba(167, 139, 250, 0.1); border-color: rgba(167, 139, 250, 0.2); }
+    .stage-pill-6 { color: #fb7185; background-color: rgba(251, 113, 133, 0.1); border-color: rgba(251, 113, 133, 0.2); }
+
+    .price-return {
+        font-weight: 700;
+    }
+
+    .return-up {
+        color: #f14949;
+    }
+
+    .return-down {
+        color: #42a5f5;
+    }
+
+    .btn-delete {
+        background: transparent;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-delete:hover {
+        color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="portfolio-wrapper">
+    <!-- Header Hero -->
+    <div class="dashboard-hero" style="margin-bottom: 0;">
+        <h1 class="hero-title"><i class="fa-solid fa-folder-open"></i> 포트폴리오 트래커</h1>
+        <p class="hero-subtitle">매수 종목별 매수 시점의 Stage 진입 시기와 현재 시세 대비 누적 수익률을 실시간 모니터링합니다.</p>
+    </div>
+
+    <!-- Add Transaction Card -->
+    <div class="portfolio-card">
+        <div class="card-title">
+            <i class="fa-solid fa-square-plus" style="color: #3b82f6;"></i>
+            <span>매수 종목 등록</span>
+        </div>
+        
+        <form id="portfolio-add-form" onsubmit="submitPortfolioForm(event)">
+            <div class="portfolio-form-grid">
+                <!-- Autocomplete input -->
+                <div class="form-group">
+                    <label for="stock-search-input">종목 검색</label>
+                    <input type="text" id="stock-search-input" placeholder="종목명 또는 티커 코드 입력... (예: 삼성전자, AAPL)" autocomplete="off" required>
+                    <div id="search-dropdown" class="autocomplete-dropdown"></div>
+                    
+                    <!-- Hidden fields to hold selected ticker properties -->
+                    <input type="hidden" id="form-code">
+                    <input type="hidden" id="form-market">
+                </div>
+
+                <div class="form-group">
+                    <label for="form-buy-date">매수일자</label>
+                    <input type="date" id="form-buy-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="form-buy-price">매수가격</label>
+                    <input type="number" id="form-buy-price" step="any" placeholder="매수가를 입력하세요" required>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn-add-stock">
+                        <i class="fa-solid fa-plus"></i> 등록하기
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Registered List Card -->
+    <div class="portfolio-card">
+        <div class="card-title">
+            <i class="fa-solid fa-list-check" style="color: #10b981;"></i>
+            <span>보유 종목 현황</span>
+        </div>
+        
+        <div class="portfolio-table-wrapper">
+            <table class="portfolio-table">
+                <thead>
+                    <tr>
+                        <th>종목명 / 코드</th>
+                        <th>매수일</th>
+                        <th style="text-align: right;">매수가격</th>
+                        <th style="text-align: right;">현재가격</th>
+                        <th style="text-align: right;">수익률</th>
+                        <th style="text-align: center;">매수시 Stage</th>
+                        <th style="text-align: center;">현재 Stage</th>
+                        <th style="text-align: center;">상태</th>
+                        <th style="text-align: center;">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolio-list-body">
+                    {% if portfolio_items %}
+                        {% for item in portfolio_items %}
+                            <tr id="portfolio-row-{{ item.id }}">
+                                <td>
+                                    <div class="stock-link-cell">
+                                        <a href="/buy_detail?code={{ item.code }}&market={{ item.market }}" class="stock-link">
+                                            {{ item.name }}
+                                            {% if item.is_kospi200 == 1 %}
+                                            <span class="badge-index badge-kospi200">코스피 200</span>
+                                            {% elif item.is_kosdaq150 == 1 %}
+                                            <span class="badge-index badge-kosdaq150">코스닥 150</span>
+                                            {% endif %}
+                                        </a>
+                                        <div class="ticker-sub-info">
+                                            <span class="badge-{{ item.market }}">{{ 'KOR' if item.market == 'kor' else 'USA' }}</span>
+                                            <span>{{ item.code }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ item.buy_date }}</td>
+                                <td style="text-align: right; font-weight: 500;">
+                                    {{ "{:,.0f}원".format(item.buy_price) if item.market == 'kor' else "${:,.2f}".format(item.buy_price) }}
+                                </td>
+                                <td style="text-align: right; font-weight: 500;">
+                                    {{ "{:,.0f}원".format(item.current_price) if item.market == 'kor' else "${:,.2f}".format(item.current_price) }}
+                                </td>
+                                <td style="text-align: right;">
+                                    {% if item.return_rate > 0 %}
+                                        <span class="price-return return-up">+{{ "{:.2f}%".format(item.return_rate) }}</span>
+                                    {% elif item.return_rate < 0 %}
+                                        <span class="price-return return-down">{{ "{:.2f}%".format(item.return_rate) }}</span>
+                                    {% else %}
+                                        <span class="price-return" style="color: var(--text-secondary);">0.00%</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="stage-pill stage-pill-{{ item.buy_stage }}">
+                                        Stage {{ item.buy_stage }}
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="stage-pill stage-pill-{{ item.current_stage }}">
+                                        Stage {{ item.current_stage }}
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="status-badge {{ item.status_class }}">
+                                        {{ item.status }}
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <button class="btn-delete" onclick="deletePortfolioItem({{ item.id }})" title="삭제">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr id="empty-row">
+                            <td colspan="9" style="text-align: center; color: var(--text-secondary); padding: 40px 0;">
+                                <i class="fa-solid fa-folder-open" style="font-size: 30px; margin-bottom: 10px; display: block; opacity: 0.5;"></i>
+                                등록된 보유 종목이 없습니다. 상단에서 매수 기록을 추가하세요.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let searchDebounceTimer;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const searchInput = document.getElementById('stock-search-input');
+        const dropdown = document.getElementById('search-dropdown');
+
+        // Autocomplete Search logic (similar to Search Page)
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchDebounceTimer);
+            const query = searchInput.value.trim();
+            
+            if (query.length < 1) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            searchDebounceTimer = setTimeout(() => {
+                fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(results => {
+                        renderSearchDropdown(results);
+                    })
+                    .catch(err => console.error("Search API error:", err));
+            }, 250);
+        });
+
+        // Close dropdown clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target !== searchInput && e.target !== dropdown) {
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        // Initialize Date Input default to today
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('form-buy-date').value = todayStr;
+    });
+
+    function renderSearchDropdown(items) {
+        const dropdown = document.getElementById('search-dropdown');
+        dropdown.innerHTML = '';
+        
+        if (items.length === 0) {
+            dropdown.innerHTML = '<div class="autocomplete-item" style="color: #64748b; cursor: default;">검색 결과가 없습니다.</div>';
+            dropdown.style.display = 'block';
+            return;
+        }
+
+        items.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'autocomplete-item';
+            
+            const badgeClass = item.market === 'kor' ? 'badge-kor' : 'badge-us';
+            const marketLabel = item.market === 'kor' ? 'KOR' : 'USA';
+            
+            el.innerHTML = `
+                <div>
+                    <span class="item-ticker-name">${item.name}</span>
+                    <span class="item-ticker-code">${item.code}</span>
+                </div>
+                <span class="${badgeClass}">${marketLabel}</span>
+            `;
+            
+            el.addEventListener('click', () => {
+                // Populate input and hidden fields
+                document.getElementById('stock-search-input').value = `${item.name} (${item.code})`;
+                document.getElementById('form-code').value = item.code;
+                document.getElementById('form-market').value = item.market;
+                dropdown.style.display = 'none';
+            });
+            
+            dropdown.appendChild(el);
+        });
+        
+        dropdown.style.display = 'block';
+    }
+
+    function submitPortfolioForm(e) {
+        e.preventDefault();
+        
+        const code = document.getElementById('form-code').value;
+        const market = document.getElementById('form-market').value;
+        const buyDate = document.getElementById('form-buy-date').value;
+        const buyPrice = document.getElementById('form-buy-price').value;
+        
+        if (!code || !market) {
+            alert("검색 드롭다운 리스트에서 올바른 종목을 선택해주세요.");
+            return;
+        }
+
+        // Send API request
+        const url = `/api/portfolio/add?code=${encodeURIComponent(code)}&market=${encodeURIComponent(market)}&buy_date=${encodeURIComponent(buyDate)}&buy_price=${encodeURIComponent(buyPrice)}`;
+        
+        fetch(url, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Reload page to re-calculate stats
+                    location.reload();
+                } else {
+                    alert(data.message || "종목 등록에 실패했습니다.");
+                }
+            })
+            .catch(err => {
+                console.error("Add portfolio error:", err);
+                alert("서버 연결에 실패했습니다.");
+            });
+    }
+
+    function deletePortfolioItem(id) {
+        if (!confirm("해당 포트폴리오 매수 종목 기록을 삭제하시겠습니까?")) {
+            return;
+        }
+
+        fetch(`/api/portfolio/delete?id=${id}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Remove row from table directly
+                    const row = document.getElementById(`portfolio-row-${id}`);
+                    if (row) {
+                        row.remove();
+                    }
+                    
+                    // If no rows left, reload to show empty row
+                    const tbody = document.getElementById('portfolio-list-body');
+                    if (tbody && tbody.children.length === 0) {
+                        location.reload();
+                    }
+                } else {
+                    alert(data.message || "삭제에 실패했습니다.");
+                }
+            })
+            .catch(err => {
+                console.error("Delete portfolio error:", err);
+                alert("삭제 처리 중 연결 오류가 발생했습니다.");
+            });
+    }
+</script>
+{% endblock %}

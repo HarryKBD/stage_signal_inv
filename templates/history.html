@@ -1,0 +1,750 @@
+{% extends "base.html" %}
+
+{% block title %}Signal History & Trends{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Glassmorphism Dashboard Layout */
+    .history-container {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+    }
+
+    .glass-card {
+        background: rgba(22, 25, 32, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 25px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        transition: border-color 0.3s ease;
+    }
+
+    .glass-card:hover {
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    /* Control Panel styling */
+    .control-panel {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .left-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .market-selector {
+        display: flex;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 4px;
+    }
+
+    .market-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .market-btn.active {
+        background: var(--color-accent);
+        color: white;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    /* KOR Sub-market Selector */
+    .sub-market-selector {
+        display: flex;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 3px;
+        gap: 2px;
+        transition: opacity 0.3s ease;
+    }
+
+    .sub-market-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .sub-market-btn.active {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .date-select-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .custom-select {
+        background: #1e222d;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.2s ease;
+    }
+
+    .custom-select:focus {
+        border-color: var(--color-accent);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    .stat-card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .stat-title {
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .stat-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .stat-number {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+
+    .stat-badges {
+        display: flex;
+        gap: 8px;
+    }
+
+    .change-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .change-badge.plus {
+        background: rgba(34, 197, 94, 0.12);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .change-badge.minus {
+        background: rgba(239, 68, 68, 0.12);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    /* Three columns Grid for Signals */
+    .signals-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 25px;
+    }
+
+    .column-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 15px;
+    }
+
+    .column-title {
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .signal-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    /* Custom scrollbar for list */
+    .signal-list::-webkit-scrollbar {
+        width: 5px;
+    }
+    .signal-list::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.01);
+    }
+    .signal-list::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+    }
+
+    .signal-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        transition: background 0.2s ease;
+    }
+
+    .signal-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .stock-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .stock-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .stock-code {
+        font-size: 11px;
+        color: var(--text-muted);
+        font-family: monospace;
+    }
+
+    .stock-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .stock-price {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .state-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+    }
+
+    .badge-in {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-out {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        text-decoration: line-through;
+    }
+
+    .badge-hold {
+        background: rgba(148, 163, 184, 0.1);
+        color: #94a3b8;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .no-data {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 13px;
+        padding: 20px 0;
+    }
+
+    /* Subtitle styling for trends */
+    .trend-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .trend-title {
+        font-size: 18px;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-container">
+    <!-- Hero Dashboard Header -->
+    <div class="dashboard-hero">
+        <h1 class="hero-title"><i class="fa-solid fa-clock-rotate-left"></i> Signal History & Trends</h1>
+        <p class="hero-subtitle">최근 6개월 동안의 매수/상승/하락 신호 카운트 추이를 파악하고 일별 포착/탈락(In & Out) 변경 사항을 모니터링합니다.</p>
+    </div>
+
+    <!-- Control Panel (Market toggle & Date select) -->
+    <div class="glass-card control-panel">
+        <div class="left-controls">
+            <div class="market-selector">
+                <button class="market-btn active" id="market-kor" onclick="changeMarket('kor')">KOR 마켓</button>
+                <button class="market-btn" id="market-us" onclick="changeMarket('us')">US 마켓</button>
+            </div>
+
+            <!-- KOR Sub-markets Toggle -->
+            <div class="sub-market-selector" id="kor-sub-selector">
+                <button class="sub-market-btn active" id="sub-all" onclick="changeSubMarket('ALL')">통합</button>
+                <button class="sub-market-btn" id="sub-kospi" onclick="changeSubMarket('KOSPI')">코스피</button>
+                <button class="sub-market-btn" id="sub-kosdaq" onclick="changeSubMarket('KOSDAQ')">코스닥</button>
+                <button class="sub-market-btn" id="sub-kospi200" onclick="changeSubMarket('KOSPI200')">코스피 200</button>
+                <button class="sub-market-btn" id="sub-kosdaq150" onclick="changeSubMarket('KOSDAQ150')">코스닥 150</button>
+                <button class="sub-market-btn" id="sub-kospi200equal" onclick="changeSubMarket('KOSPI200_EQUAL')">코스피200동일</button>
+            </div>
+        </div>
+
+        <div class="date-select-wrapper">
+            <label for="date-select" style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">조회 날짜 선택:</label>
+            <select id="date-select" class="custom-select" onchange="loadSignalHistory()">
+                <!-- Populated dynamically via JS -->
+            </select>
+        </div>
+    </div>
+
+    <!-- 6-Month ApexCharts Trend Section -->
+    <div class="glass-card">
+        <div class="trend-header">
+            <h3 class="trend-title" id="trend-chart-title"><i class="fa-solid fa-chart-area" style="color: var(--color-accent);"></i> 6-Month Signal Distribution Trend</h3>
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">* 최근 120영업일 기준 시계열 통계</span>
+        </div>
+        <div id="trend-chart" style="min-height: 350px;"></div>
+    </div>
+
+    <!-- Daily Quick Summary Cards -->
+    <div class="stats-grid">
+        <!-- Early Buy Stats -->
+        <div class="glass-card stat-card" style="border-left: 4px solid #3b82f6;">
+            <div class="stat-title"><i class="fa-solid fa-fire" style="color: #3b82f6;"></i> Early Buy Candidates</div>
+            <div class="stat-main">
+                <div class="stat-number" id="early-buy-total">0</div>
+                <div class="stat-badges">
+                    <span class="change-badge plus" id="early-buy-in-badge">+0 In</span>
+                    <span class="change-badge minus" id="early-buy-out-badge">-0 Out</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 1 Stats -->
+        <div class="glass-card stat-card" style="border-left: 4px solid #10b981;">
+            <div class="stat-title"><i class="fa-solid fa-circle-up" style="color: #10b981;"></i> Stage 1 (Stable Upward)</div>
+            <div class="stat-main">
+                <div class="stat-number" id="stage1-total">0</div>
+                <div class="stat-badges">
+                    <span class="change-badge plus" id="stage1-in-badge">+0 In</span>
+                    <span class="change-badge minus" id="stage1-out-badge">-0 Out</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage 4 Stats -->
+        <div class="glass-card stat-card" style="border-left: 4px solid #ef4444;">
+            <div class="stat-title"><i class="fa-solid fa-circle-down" style="color: #ef4444;"></i> Stage 4 (Stable Downward)</div>
+            <div class="stat-main">
+                <div class="stat-number" id="stage4-total">0</div>
+                <div class="stat-badges">
+                    <span class="change-badge plus" id="stage4-in-badge">+0 In</span>
+                    <span class="change-badge minus" id="stage4-out-badge">-0 Out</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Signal Changelog Details (3 Columns) -->
+    <div class="signals-grid">
+        <!-- Early Buy Candidates Changelog -->
+        <div class="glass-card">
+            <div class="column-header">
+                <span class="column-title"><i class="fa-solid fa-fire" style="color: #3b82f6;"></i> Early Buy Candidates</span>
+                <span class="state-badge badge-hold" id="early-buy-count-lbl">0 종목</span>
+            </div>
+            <div class="signal-list" id="early-buy-list">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+
+        <!-- Stage 1 Stable Upward Changelog -->
+        <div class="glass-card">
+            <div class="column-header">
+                <span class="column-title"><i class="fa-solid fa-circle-up" style="color: #10b981;"></i> Stage 1 (Stable Upward)</span>
+                <span class="state-badge badge-hold" id="stage1-count-lbl">0 종목</span>
+            </div>
+            <div class="signal-list" id="stage1-list">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+
+        <!-- Stage 4 Stable Downward Changelog -->
+        <div class="glass-card">
+            <div class="column-header">
+                <span class="column-title"><i class="fa-solid fa-circle-down" style="color: #ef4444;"></i> Stage 4 (Stable Downward)</span>
+                <span class="state-badge badge-hold" id="stage4-count-lbl">0 종목</span>
+            </div>
+            <div class="signal-list" id="stage4-list">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Embedded template data for available dates
+    const korDates = {{ kor_dates|tojson }};
+    const usDates = {{ us_dates|tojson }};
+    
+    let currentMarket = 'kor';
+    let currentSubMarket = 'ALL';
+    let chartInstance = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Initialize dropdown with Korean market dates
+        populateDates('kor');
+        
+        // Draw trend chart for Korean market (default: ALL 통합)
+        drawTrendChart('kor', 'ALL');
+        
+        // Initial data load
+        loadSignalHistory();
+    });
+
+    function changeMarket(market) {
+        if (currentMarket === market) return;
+        currentMarket = market;
+        
+        // Update button active state
+        document.getElementById('market-kor').classList.toggle('active', market === 'kor');
+        document.getElementById('market-us').classList.toggle('active', market === 'us');
+        
+        // Show/Hide sub-market selector for KOR
+        const subSelector = document.getElementById('kor-sub-selector');
+        if (market === 'kor') {
+            subSelector.style.display = 'flex';
+            currentSubMarket = 'ALL';
+            updateSubMarketButtons('ALL');
+        } else {
+            subSelector.style.display = 'none';
+            currentSubMarket = 'ALL';
+        }
+        
+        // Re-populate dates list
+        populateDates(market);
+        
+        // Update Chart
+        drawTrendChart(market, currentSubMarket);
+        
+        // Reload details for the selected date
+        loadSignalHistory();
+    }
+
+    function changeSubMarket(subMarket) {
+        if (currentSubMarket === subMarket) return;
+        currentSubMarket = subMarket;
+        
+        updateSubMarketButtons(subMarket);
+        
+        // Update Chart
+        drawTrendChart(currentMarket, subMarket);
+        
+        // Reload details for the selected date
+        loadSignalHistory();
+    }
+
+    function updateSubMarketButtons(activeSubMarket) {
+        document.getElementById('sub-all').classList.toggle('active', activeSubMarket === 'ALL');
+        document.getElementById('sub-kospi').classList.toggle('active', activeSubMarket === 'KOSPI');
+        document.getElementById('sub-kosdaq').classList.toggle('active', activeSubMarket === 'KOSDAQ');
+        document.getElementById('sub-kospi200').classList.toggle('active', activeSubMarket === 'KOSPI200');
+        document.getElementById('sub-kosdaq150').classList.toggle('active', activeSubMarket === 'KOSDAQ150');
+        document.getElementById('sub-kospi200equal').classList.toggle('active', activeSubMarket === 'KOSPI200_EQUAL');
+    }
+
+    function populateDates(market) {
+        const dates = market === 'kor' ? korDates : usDates;
+        const selector = document.getElementById('date-select');
+        selector.innerHTML = '';
+        
+        if (dates.length === 0) {
+            const opt = document.createElement('option');
+            opt.text = "기록된 데이터 없음";
+            opt.value = "";
+            selector.appendChild(opt);
+            return;
+        }
+
+        dates.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.text = d;
+            selector.appendChild(opt);
+        });
+    }
+
+    async function drawTrendChart(market, subMarket) {
+        try {
+            // Update chart title based on filters
+            const titleEl = document.getElementById('trend-chart-title');
+            let marketLabel = market === 'kor' ? 'KOR 통합' : 'US Market';
+            if (market === 'kor') {
+                if (subMarket === 'KOSPI') marketLabel = '코스피 (KOSPI)';
+                else if (subMarket === 'KOSDAQ') marketLabel = '코스닥 (KOSDAQ)';
+                else if (subMarket === 'KOSPI200') marketLabel = '코스피 200 (KOSPI 200)';
+                else if (subMarket === 'KOSDAQ150') marketLabel = '코스닥 150 (KOSDAQ 150)';
+                else if (subMarket === 'KOSPI200_EQUAL') marketLabel = '코스피 200 동일가중';
+            }
+            titleEl.innerHTML = `<i class="fa-solid fa-chart-area" style="color: var(--color-accent);"></i> 6-Month Signal Distribution Trend (${marketLabel})`;
+
+            const response = await fetch(`/api/history/trends?market=${market}&sub_market=${subMarket}`);
+            const result = await response.json();
+            
+            const options = {
+                chart: {
+                    type: 'line', // Base type is line, so we can mix area and line types
+                    height: 350,
+                    toolbar: { 
+                        show: true,
+                        tools: {
+                            download: true,
+                            selection: false,
+                            zoom: true,
+                            zoomin: true,
+                            zoomout: true,
+                            pan: true,
+                            reset: true
+                        },
+                        autoSelected: 'pan' // Default mouse drag action is pan (drag-to-scroll!)
+                    },
+                    background: 'transparent',
+                    foreColor: '#94a3b8'
+                },
+                zoom: {
+                    enabled: true,
+                    type: 'x',
+                    autoScaleYaxis: true
+                },
+                colors: result.series.length === 4 ? ['#3b82f6', '#10b981', '#ef4444', '#ffb300'] : ['#3b82f6', '#10b981', '#ef4444'],
+                dataLabels: { enabled: false },
+                stroke: { 
+                    curve: 'smooth', 
+                    width: result.series.length === 4 ? [2, 2, 2, 3] : [2, 2, 2] 
+                },
+                fill: {
+                    type: result.series.length === 4 ? ['gradient', 'gradient', 'gradient', 'solid'] : 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.35,
+                        opacityTo: 0.05,
+                        stops: [0, 90, 100]
+                    }
+                },
+                series: result.series,
+                xaxis: {
+                    type: 'datetime',
+                    labels: {
+                        format: 'MM/dd'
+                    }
+                },
+                yaxis: result.series.length === 4 ? [
+                    {
+                        seriesName: result.series[0].name,
+                        title: { text: '시그널 종목 개수 (Count)' },
+                        labels: { style: { colors: '#94a3b8' } }
+                    },
+                    {
+                        seriesName: result.series[1].name,
+                        show: false
+                    },
+                    {
+                        seriesName: result.series[2].name,
+                        show: false
+                    },
+                    {
+                        seriesName: result.series[3].name,
+                        opposite: true,
+                        title: { text: result.series[3].name + ' (원)' },
+                        min: function(min) { return Math.floor(min * 0.98); }, // 2% padding below min
+                        max: function(max) { return Math.ceil(max * 1.02); },  // 2% padding above max
+                        labels: {
+                            formatter: function(val) {
+                                return Math.round(val).toLocaleString() + '원';
+                            },
+                            style: { colors: '#ffb300' }
+                        }
+                    }
+                ] : [
+                    {
+                        title: { text: '시그널 종목 개수 (Count)' },
+                        labels: { style: { colors: '#94a3b8' } }
+                    }
+                ],
+                tooltip: {
+                    theme: 'dark',
+                    x: { format: 'yyyy-MM-dd' },
+                    y: {
+                        formatter: function(val, { seriesIndex }) {
+                            if (result.series.length === 4 && seriesIndex === 3) {
+                                return Math.round(val).toLocaleString() + '원';
+                            }
+                            return val;
+                        }
+                    }
+                },
+                grid: {
+                    borderColor: 'rgba(255, 255, 255, 0.05)',
+                    strokeDashArray: 4
+                }
+            };
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            chartInstance = new ApexCharts(document.querySelector("#trend-chart"), options);
+            chartInstance.render();
+        } catch (e) {
+            console.error("Failed to render trend chart: ", e);
+        }
+    }
+
+    async function loadSignalHistory() {
+        const dateSelect = document.getElementById('date-select');
+        const date = dateSelect.value;
+        if (!date) return;
+
+        try {
+            const response = await fetch(`/api/history?market=${currentMarket}&date=${date}&sub_market=${currentSubMarket}`);
+            const data = await response.json();
+            
+            // Populate stats and lists
+            updateSignalSection('early-buy', data.early_buy);
+            updateSignalSection('stage1', data.stage1);
+            updateSignalSection('stage4', data.stage4);
+            
+        } catch (e) {
+            console.error("Failed to load historical signal data: ", e);
+        }
+    }
+
+    function updateSignalSection(typeId, sectionData) {
+        const total = sectionData.in.length + sectionData.hold.length;
+        
+        // 1. Update stats cards
+        document.getElementById(`${typeId}-total`).innerText = total;
+        document.getElementById(`${typeId}-in-badge`).innerText = `+${sectionData.in.length} In`;
+        document.getElementById(`${typeId}-out-badge`).innerText = `-${sectionData.out.length} Out`;
+        
+        // 2. Update panel count label
+        document.getElementById(`${typeId}-count-lbl`).innerText = `${total} 종목 (신규: ${sectionData.in.length} / 이탈: ${sectionData.out.length})`;
+
+        // 3. Render changelog list
+        const container = document.getElementById(`${typeId}-list`);
+        container.innerHTML = '';
+        
+        const allItems = [];
+        
+        // Map INs
+        sectionData.in.forEach(item => {
+            allItems.push({ ...item, status: 'in', label: '신규 진입', badgeClass: 'badge-in' });
+        });
+        // Map HOLDs
+        sectionData.hold.forEach(item => {
+            allItems.push({ ...item, status: 'hold', label: '유지', badgeClass: 'badge-hold' });
+        });
+        // Map OUTs
+        sectionData.out.forEach(item => {
+            allItems.push({ ...item, status: 'out', label: '이탈', badgeClass: 'badge-out' });
+        });
+
+        if (allItems.length === 0) {
+            container.innerHTML = '<div class="no-data"><i class="fa-solid fa-folder-open"></i> 당일 감지된 내역이 없습니다.</div>';
+            return;
+        }
+
+        allItems.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'signal-item';
+            
+            const priceFormatted = currentMarket === 'kor' 
+                ? `${Math.round(item.close).toLocaleString()}원` 
+                : `$${parseFloat(item.close).toFixed(2)}`;
+
+            let indexBadgeHtml = '';
+            if (currentMarket === 'kor') {
+                if (item.is_kospi200 === 1) {
+                    indexBadgeHtml = '<span class="badge-index badge-kospi200">코스피 200</span>';
+                } else if (item.is_kosdaq150 === 1) {
+                    indexBadgeHtml = '<span class="badge-index badge-kosdaq150">코스닥 150</span>';
+                }
+            }
+
+            div.innerHTML = `
+                <div class="stock-info">
+                    <span class="stock-name">
+                        <a href="/search?q=${item.code}" style="color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.2);">
+                            ${item.name}
+                        </a>
+                        ${indexBadgeHtml}
+                    </span>
+                    <span class="stock-code">${item.code} ${item.stage ? `| Stage ${item.stage}` : ''}</span>
+                </div>
+                <div class="stock-meta">
+                    <span class="stock-price">${priceFormatted}</span>
+                    <span class="state-badge ${item.badgeClass}">${item.label}</span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+</script>
+{% endblock %}

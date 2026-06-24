@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드{% endblock %}
+
+{% block content %}
+<div class="dashboard-hero">
+    <h1 class="hero-title">이동평균선 대순환 분석 시스템</h1>
+    <p class="hero-subtitle">5일, 20일, 40일 이평선 정배열 대순환 및 대순환 MACD 모멘텀 기반 실시간 스캐닝 서비스</p>
+</div>
+
+<div class="market-grid">
+    <!-- Korean Market Card -->
+    <div class="market-card kor-card">
+        <div class="market-header">
+            <div class="market-badge badge-kor">KOR</div>
+            <h2 class="market-title">KOREAN MARKET</h2>
+        </div>
+        <p class="market-desc">코스피, 코스닥 전 종목 데이터 실시간 분석</p>
+        <div class="menu-list">
+            <a href="/buy_candidates?market=kor" class="menu-item">
+                <div class="menu-item-icon"><i class="fa-solid fa-circle-play"></i></div>
+                <div class="menu-item-text">
+                    <span class="menu-item-title">1. Today Early Buy Candidates</span>
+                    <span class="menu-item-desc">Stage 5/6 상태에서 MACD 골든크로스 상승 전환 종목</span>
+                </div>
+                <div class="menu-item-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+            </a>
+            <a href="/stage1?market=kor" class="menu-item">
+                <div class="menu-item-icon icon-stage1"><i class="fa-solid fa-chart-line"></i></div>
+                <div class="menu-item-text">
+                    <span class="menu-item-title">2. Today Stage 1 List</span>
+                    <span class="menu-item-desc">정배열(5 > 20 > 40) 상승 안정 국면 진입 종목</span>
+                </div>
+                <div class="menu-item-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+            </a>
+            <a href="/stage4?market=kor" class="menu-item">
+                <div class="menu-item-icon icon-stage4" style="color: #60a5fa; background-color: rgba(96, 165, 250, 0.08);"><i class="fa-solid fa-chart-line fa-flip-vertical"></i></div>
+                <div class="menu-item-text">
+                    <span class="menu-item-title">3. Today Stage 4 List</span>
+                    <span class="menu-item-desc">역배열(40 > 20 > 5) 하락 안정 국면 진입 종목</span>
+                </div>
+                <div class="menu-item-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+            </a>
+        </div>
+    </div>
+
+    <!-- US Market Card -->
+    <div class="market-card us-card">
+        <div class="market-header">
+            <div class="market-badge badge-us">USA</div>
+            <h2 class="market-title">US MARKET</h2>
+        </div>
+        <p class="market-desc">나스닥, 뉴욕증시, 아멕스 주요 기업 데이터 실시간 분석</p>
+        <div class="menu-list">
+            <a href="/buy_candidates?market=us" class="menu-item">
+                <div class="menu-item-icon"><i class="fa-solid fa-circle-play"></i></div>
+                <div class="menu-item-text">
+                    <span class="menu-item-title">1. Today Early Buy Candidates</span>
+                    <span class="menu-item-desc">Stage 5/6 상태에서 MACD 골든크로스 상승 전환 종목</span>
+                </div>
+                <div class="menu-item-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+            </a>
+            <a href="/stage1?market=us" class="menu-item">
+                <div class="menu-item-icon icon-stage1"><i class="fa-solid fa-chart-line"></i></div>
+                <div class="menu-item-text">
+                    <span class="menu-item-title">2. Today Stage 1 List</span>
+                    <span class="menu-item-desc">정배열(5 > 20 > 40) 상승 안정 국면 진입 종목</span>
+                </div>
+                <div class="menu-item-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+            </a>
+            <a href="/stage4?market=us" class="menu-item">
+                <div class="menu-item-icon icon-stage4" style="color: #60a5fa; background-color: rgba(96, 165, 250, 0.08);"><i class="fa-solid fa-chart-line fa-flip-vertical"></i></div>
+                <div class="menu-item-text">
+                    <span class="menu-item-title">3. Today Stage 4 List</span>
+                    <span class="menu-item-desc">역배열(40 > 20 > 5) 하락 안정 국면 진입 종목</span>
+                </div>
+                <div class="menu-item-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+            </a>
+        </div>
+</div>
+
+<div class="statistics-section">
+    <!-- Korean Market Card -->
+    <div class="statistics-card">
+        <div class="stat-card-header">
+            <h3><i class="fa-solid fa-chart-pie"></i> KOR Market Stages ({{ kor_latest.Date if kor_latest else '-' }})</h3>
+            <a href="/stage_trends?market=kor" class="btn-detail-trend">자세히 보기 <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+        
+        <div class="stat-content">
+            <div class="stat-table-wrapper">
+                <table class="stat-table">
+                    <thead>
+                        <tr>
+                            <th>국면 (Stage)</th>
+                            <th style="text-align: right;">종목 수</th>
+                            <th style="text-align: right;">비율</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if kor_latest %}
+                        <tr><td>Stage 1 (정배열 상승)</td><td class="num">{{ kor_latest.Stage1_Count }}</td><td class="num">{{ "{:.1f}%".format((kor_latest.Stage1_Count/kor_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 2 (상승세 둔화)</td><td class="num">{{ kor_latest.Stage2_Count }}</td><td class="num">{{ "{:.1f}%".format((kor_latest.Stage2_Count/kor_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 3 (하락전환 초기)</td><td class="num">{{ kor_latest.Stage3_Count }}</td><td class="num">{{ "{:.1f}%".format((kor_latest.Stage3_Count/kor_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 4 (역배열 하락)</td><td class="num">{{ kor_latest.Stage4_Count }}</td><td class="num">{{ "{:.1f}%".format((kor_latest.Stage4_Count/kor_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 5 (하락세 둔화)</td><td class="num">{{ kor_latest.Stage5_Count }}</td><td class="num">{{ "{:.1f}%".format((kor_latest.Stage5_Count/kor_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 6 (상승전환 초기)</td><td class="num">{{ kor_latest.Stage6_Count }}</td><td class="num">{{ "{:.1f}%".format((kor_latest.Stage6_Count/kor_latest.Total_Count)*100) }}</td></tr>
+                        <tr class="total-row"><td>합계</td><td class="num">{{ kor_latest.Total_Count }}</td><td class="num">100.0%</td></tr>
+                        {% else %}
+                        <tr><td colspan="3" style="text-align: center;">데이터가 없습니다.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="stat-chart-wrapper" onclick="location.href='/stage_trends?market=kor'" style="cursor: pointer;">
+                <div class="chart-title">최근 30일 Stage 추이 (누적 영역)</div>
+                <div id="kor-mini-trend"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- US Market Card -->
+    <div class="statistics-card">
+        <div class="stat-card-header">
+            <h3><i class="fa-solid fa-chart-pie"></i> US Market Stages ({{ us_latest.Date if us_latest else '-' }})</h3>
+            <a href="/stage_trends?market=us" class="btn-detail-trend">자세히 보기 <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+        
+        <div class="stat-content">
+            <div class="stat-table-wrapper">
+                <table class="stat-table">
+                    <thead>
+                        <tr>
+                            <th>국면 (Stage)</th>
+                            <th style="text-align: right;">종목 수</th>
+                            <th style="text-align: right;">비율</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if us_latest %}
+                        <tr><td>Stage 1 (정배열 상승)</td><td class="num">{{ us_latest.Stage1_Count }}</td><td class="num">{{ "{:.1f}%".format((us_latest.Stage1_Count/us_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 2 (상승세 둔화)</td><td class="num">{{ us_latest.Stage2_Count }}</td><td class="num">{{ "{:.1f}%".format((us_latest.Stage2_Count/us_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 3 (하락전환 초기)</td><td class="num">{{ us_latest.Stage3_Count }}</td><td class="num">{{ "{:.1f}%".format((us_latest.Stage3_Count/us_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 4 (역배열 하락)</td><td class="num">{{ us_latest.Stage4_Count }}</td><td class="num">{{ "{:.1f}%".format((us_latest.Stage4_Count/us_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 5 (하락세 둔화)</td><td class="num">{{ us_latest.Stage5_Count }}</td><td class="num">{{ "{:.1f}%".format((us_latest.Stage5_Count/us_latest.Total_Count)*100) }}</td></tr>
+                        <tr><td>Stage 6 (상승전환 초기)</td><td class="num">{{ us_latest.Stage6_Count }}</td><td class="num">{{ "{:.1f}%".format((us_latest.Stage6_Count/us_latest.Total_Count)*100) }}</td></tr>
+                        <tr class="total-row"><td>합계</td><td class="num">{{ us_latest.Total_Count }}</td><td class="num">100.0%</td></tr>
+                        {% else %}
+                        <tr><td colspan="3" style="text-align: center;">데이터가 없습니다.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="stat-chart-wrapper" onclick="location.href='/stage_trends?market=us'" style="cursor: pointer;">
+                <div class="chart-title">최근 30일 Stage 추이 (누적 영역)</div>
+                <div id="us-mini-trend"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="info-section">
+    <h3><i class="fa-solid fa-circle-info"></i> 투자 전략 요약</h3>
+    <div class="strategy-cards">
+        <div class="strategy-item">
+            <h4>Stage 5 & 6 (조기 매수 국면)</h4>
+            <p>기나긴 하락(Stage 4)이 둔화되거나(Stage 5), 상승 전환 초입(Stage 6)에 이평선보다 한발 앞서 MACD 3대 모멘텀(단기/중기/장기)이 동시에 상승으로 턴하는 순간을 포착하여 저점 선발대를 파견합니다.</p>
+        </div>
+        <div class="strategy-item">
+            <h4>Stage 1 (안정 상승 국면)</h4>
+            <p>5일, 20일, 40일 이평선이 완전히 정배열을 이뤄 상승 추세가 가장 공고해진 주 수익 구간으로, 추가 매수 및 보유(Hold)를 진행합니다.</p>
+        </div>
+        <div class="strategy-item">
+            <h4>Stage 4 (안정 하락 국면)</h4>
+            <p>40일, 20일, 5일 이평선이 완전히 역배열을 이뤄 하락세가 가장 강한 구간으로, 매수 금지 및 강력한 관망(공매도 기회) 포지션을 유지합니다.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const korRecent = {{ kor_recent_30 | tojson if kor_recent_30 else '[]' }};
+    const usRecent = {{ us_recent_30 | tojson if us_recent_30 else '[]' }};
+
+    function renderMiniChart(containerId, data) {
+        if (!data || data.length === 0) return;
+        
+        const categories = data.map(d => d.Date);
+        const s1 = data.map(d => d.Stage1_Count);
+        const s2 = data.map(d => d.Stage2_Count);
+        const s3 = data.map(d => d.Stage3_Count);
+        const s4 = data.map(d => d.Stage4_Count);
+        const s5 = data.map(d => d.Stage5_Count);
+        const s6 = data.map(d => d.Stage6_Count);
+
+        const options = {
+            series: [
+                { name: 'Stage 1', data: s1, color: '#f14949' },
+                { name: 'Stage 2', data: s2, color: '#fb923c' },
+                { name: 'Stage 3', data: s3, color: '#e2e8f0' },
+                { name: 'Stage 4', data: s4, color: '#42a5f5' },
+                { name: 'Stage 5', data: s5, color: '#fb7185' },
+                { name: 'Stage 6', data: s6, color: '#a78bfa' }
+            ],
+            chart: {
+                type: 'area',
+                height: 220,
+                stacked: true,
+                toolbar: { show: false },
+                sparkline: { enabled: false }
+            },
+            dataLabels: { enabled: false },
+            stroke: { curve: 'smooth', width: 1.5 },
+            grid: {
+                borderColor: '#232731',
+                padding: { left: 0, right: 0, top: 0, bottom: 0 }
+            },
+            xaxis: {
+                categories: categories,
+                labels: { show: false },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            yaxis: {
+                labels: { show: false }
+            },
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    opacityFrom: 0.55,
+                    opacityTo: 0.05,
+                }
+            },
+            legend: { show: false },
+            tooltip: {
+                theme: 'dark',
+                x: { show: true }
+            }
+        };
+
+        const chart = new ApexCharts(document.querySelector(`#${containerId}`), options);
+        chart.render();
+    }
+
+    renderMiniChart('kor-mini-trend', korRecent);
+    renderMiniChart('us-mini-trend', usRecent);
+});
+</script>
+{% endblock %}

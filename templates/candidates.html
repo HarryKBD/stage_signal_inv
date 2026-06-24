@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Today Early Buy Candidates ({{ market.upper() }}){% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title-area">
+        <a href="/" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Home</a>
+        <h1 class="page-title">Today Early Buy Candidates ({{ market.upper() }})</h1>
+        <p class="page-subtitle">Stage 5/6 및 대순환 MACD 3종 지표가 모두 전 영업일 대비 우상향 중인 매수 선발대 후보 종목군</p>
+    </div>
+    <div class="page-meta-area">
+        <span class="total-badge"><i class="fa-solid fa-list-ol"></i> 검색 결과: <strong>{{ total_count }}</strong> 종목</span>
+    </div>
+</div>
+
+<div class="candidates-container">
+    {% if not candidates %}
+    <div class="empty-state">
+        <i class="fa-solid fa-triangle-exclamation empty-icon"></i>
+        <h3>스캔 결과가 없습니다.</h3>
+        <p>오늘 조건에 맞는 Early Buy 후보 종목이 존재하지 않거나 데이터베이스를 업데이트해야 합니다.</p>
+    </div>
+    {% else %}
+    <div class="candidates-grid">
+        {% for c in candidates %}
+        <div class="candidate-card" onclick="location.href='/buy_detail?code={{ c.Code }}&market={{ market }}'">
+            <div class="card-header">
+                <div class="ticker-info">
+                    <span class="ticker-name">
+                        {{ c.Name }}
+                        {% if c.IsKOSPI200 == 1 %}
+                        <span class="badge-index badge-kospi200">코스피 200</span>
+                        {% elif c.IsKOSDAQ150 == 1 %}
+                        <span class="badge-index badge-kosdaq150">코스닥 150</span>
+                        {% endif %}
+                    </span>
+                    <span class="ticker-code">{{ c.Code }}</span>
+                </div>
+                <div class="ticker-price">
+                    <span class="price-val">{{ "{:,.2f}".format(c.Close) if market == 'us' else "{:,.0f}".format(c.Close) }}</span>
+                    <span class="price-currency">{{ 'USD' if market == 'us' else 'KRW' }}</span>
+                </div>
+            </div>
+
+            <!-- Summary Interactive Chart Container -->
+            <div class="summary-chart-box">
+                <div id="chart-{{ c.Code }}" class="summary-chart-canvas"></div>
+            </div>
+
+            <div class="card-footer">
+                <div class="footer-stat">
+                    <span class="stat-label">현재 Stage</span>
+                    <span class="stat-val badge-stage-{{ c.Stage }}">Stage {{ c.Stage }}</span>
+                </div>
+                <div class="footer-stat">
+                    <span class="stat-label">시그널 발생일</span>
+                    <span class="stat-val text-signal-date"><i class="fa-regular fa-calendar"></i> {{ c.SignalDate }}</span>
+                </div>
+                <div class="footer-stat">
+                    <span class="stat-label">현재 진행 일수</span>
+                    <span class="stat-val text-duration"><i class="fa-solid fa-clock"></i> {{ c.DurationDays }}일째</span>
+                </div>
+            </div>
+            
+            <div class="card-hover-overlay">
+                <span class="overlay-text"><i class="fa-solid fa-magnifying-glass-chart"></i> 상세 차트 분석 보기</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if has_prev %}
+        <a href="/buy_candidates?market={{ market }}&page={{ page - 1 }}" class="page-btn"><i class="fa-solid fa-chevron-left"></i> 이전</a>
+        {% else %}
+        <span class="page-btn disabled"><i class="fa-solid fa-chevron-left"></i> 이전</span>
+        {% endif %}
+        
+        <span class="page-info"><strong>{{ page }}</strong> / {{ total_pages }} 페이지</span>
+        
+        {% if has_next %}
+        <a href="/buy_candidates?market={{ market }}&page={{ page + 1 }}" class="page-btn">다음 <i class="fa-solid fa-chevron-right"></i></a>
+        {% else %}
+        <span class="page-btn disabled">다음 <i class="fa-solid fa-chevron-right"></i></span>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const candidates = [
+        {% for c in candidates %}
+        {
+            code: "{{ c.Code }}",
+            history: {{ c.history | tojson }}
+        },
+        {% endfor %}
+    ];
+
+    candidates.forEach(stock => {
+        const container = document.getElementById(`chart-${stock.code}`);
+        if (!container || !stock.history || stock.history.length === 0) return;
+
+        // Resize container properly
+        const height = 240;
+        const initialWidth = container.clientWidth || container.parentElement.clientWidth || 300;
+
+        // Create Chart
+        const chart = LightweightCharts.createChart(container, {
+            width: initialWidth,
+            height: height,
+            layout: {
+                backgroundColor: '#161920',
+                textColor: '#9b9d9e',
+            },
+            grid: {
+                vertLines: { color: '#232731' },
+                horzLines: { color: '#232731' },
+            },
+            timeScale: {
+                visible: true,
+                borderVisible: false,
+            },
+            rightPriceScale: {
+                borderVisible: false,
+            },
+            handleScale: false,
+            handleScroll: false,
+        });
+
+        // Candlestick Series
+        const candleSeries = chart.addCandlestickSeries({
+            upColor: '#f14949',
+            downColor: '#42a5f5',
+            borderDownColor: '#42a5f5',
+            borderUpColor: '#f14949',
+            wickDownColor: '#42a5f5',
+            wickUpColor: '#f14949',
+        });
+
+        // Moving Average Series
+        const ma5Series = chart.addLineSeries({ color: '#f14949', lineWidth: 1.2 });
+        const ma20Series = chart.addLineSeries({ color: '#ffb300', lineWidth: 1.2 });
+        const ma40Series = chart.addLineSeries({ color: '#1e88e5', lineWidth: 1.2 });
+
+        // Map data with duplicate time checks to prevent charting errors
+        const candleData = [];
+        const ma5Data = [];
+        const ma20Data = [];
+        const ma40Data = [];
+        const seenTimes = new Set();
+
+        stock.history.forEach(d => {
+            if (!d.time) return;
+            if (seenTimes.has(d.time)) return; // skip duplicates
+            seenTimes.add(d.time);
+
+            candleData.push({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close });
+            if (d.ma5 !== null && d.ma5 !== undefined) ma5Data.push({ time: d.time, value: d.ma5 });
+            if (d.ma20 !== null && d.ma20 !== undefined) ma20Data.push({ time: d.time, value: d.ma20 });
+            if (d.ma40 !== null && d.ma40 !== undefined) ma40Data.push({ time: d.time, value: d.ma40 });
+        });
+
+        candleSeries.setData(candleData);
+        ma5Series.setData(ma5Data);
+        ma20Series.setData(ma20Data);
+        ma40Series.setData(ma40Data);
+
+        // Fit Content (since scaling is disabled, fit data nicely)
+        chart.timeScale().fitContent();
+
+        // Responsive handling using ResizeObserver
+        const resizeObserver = new ResizeObserver(entries => {
+            if (entries.length === 0 || !entries[0].contentRect) return;
+            const newWidth = entries[0].contentRect.width;
+            if (newWidth > 0) {
+                chart.resize(newWidth, height);
+                chart.timeScale().fitContent();
+            }
+        });
+        resizeObserver.observe(container);
+    });
+});
+</script>
+{% endblock %}

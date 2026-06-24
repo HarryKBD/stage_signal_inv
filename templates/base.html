@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}이동평균선 대순환 분석{% endblock %} | Antigravity Stock</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Style CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- TradingView Lightweight Charts Library -->
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- ApexCharts Library for Statistics trends -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i class="fa-solid fa-chart-line logo-icon"></i>
+                <span class="logo-text">Grand Cycle Analyzer</span>
+            </a>
+            <div class="nav-menu">
+                <a href="/" class="nav-link"><i class="fa-solid fa-house"></i> Home</a>
+                <a href="/search" class="nav-link"><i class="fa-solid fa-magnifying-glass"></i> Search</a>
+                <a href="/buy_candidates?market=kor" class="nav-link"><i class="fa-solid fa-fire"></i> KOR Early Buy</a>
+                <a href="/buy_candidates?market=us" class="nav-link"><i class="fa-solid fa-rocket"></i> US Early Buy</a>
+                <a href="/portfolio" class="nav-link"><i class="fa-solid fa-folder-open"></i> Portfolio</a>
+                <a href="/history" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
+                <a href="/signals" class="nav-link"><i class="fa-solid fa-satellite-dish"></i> Signals</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; 2026 Grand Cycle Investment Studio. All rights reserved.</p>
+            <p class="footer-warning">본 서비스는 기술적 분석 지표를 제공할 뿐, 투자 수익을 보장하지 않습니다. 모든 투자 결정의 책임은 본인에게 있습니다.</p>
+        </div>
+    </footer>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

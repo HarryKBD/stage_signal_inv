@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Stage 1 List (대기 중){% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title-area">
+        <a href="/" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Home</a>
+        <h1 class="page-title">Today Stage 1 List ({{ market.upper() }})</h1>
+        <p class="page-subtitle">이동평균선이 완전히 정배열에 진입한 강세 추세 종목군</p>
+    </div>
+</div>
+
+<div class="empty-state">
+    <i class="fa-solid fa-hourglass-half empty-icon" style="color: #ffb300;"></i>
+    <h3>현재 대기 상태입니다.</h3>
+    <p>이 페이지의 기능은 아직 준비 중이며, 추가 개발 요청 시 구현이 시작됩니다.</p>
+    <a href="/" class="btn-action" style="margin-top: 20px; display: inline-block;"><i class="fa-solid fa-house"></i> 대시보드로 돌아가기</a>
+</div>
+{% endblock %}

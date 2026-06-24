@@ -1,0 +1,874 @@
+{% extends "base.html" %}
+
+{% block title %}{{ name }} ({{ code }}) 상세 분석{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Detail page specific overrides */
+    .detail-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .chart-card {
+        background: rgba(22, 25, 32, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+        position: relative;
+    }
+
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .chart-legend {
+        display: flex;
+        gap: 15px;
+        font-size: 13px;
+        color: #9b9d9e;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .legend-color {
+        width: 12px;
+        height: 4px;
+        border-radius: 2px;
+    }
+
+    .chart-view-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+        background-color: #161920;
+        border-radius: 8px;
+        overflow: hidden;
+        padding: 10px 0;
+    }
+
+    .chart-wrapper {
+        position: relative;
+        width: 100%;
+    }
+
+    #price-chart {
+        height: 450px;
+    }
+
+    #macd-chart {
+        height: 220px;
+        border-top: 1px solid #232731;
+    }
+
+    /* Floating Tooltip styling */
+    .detail-tooltip {
+        position: absolute;
+        top: 30px;
+        left: 20px;
+        z-index: 100;
+        background: rgba(22, 25, 32, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        padding: 10px 15px;
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        color: #e2e8f0;
+        pointer-events: none;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        display: none;
+        line-height: 1.5;
+    }
+
+    .tooltip-title {
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: #3b82f6;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 3px;
+    }
+
+    .tooltip-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    .tooltip-val {
+        font-weight: 600;
+    }
+
+    .color-green { color: #f14949; } /* KR style Up (Red) */
+    .color-blue { color: #42a5f5; }  /* Down (Blue) */
+
+    .chart-controls {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-period {
+        background: #1e222d;
+        border: 1px solid #2f3547;
+        color: #9b9d9e;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn-period.active, .btn-period:hover {
+        background: #3b82f6;
+        border-color: #3b82f6;
+        color: #ffffff;
+    }
+
+    .chart-legend-overlay {
+        position: absolute;
+        top: 12px;
+        left: 15px;
+        z-index: 10;
+        pointer-events: none;
+        font-family: 'Inter', sans-serif;
+        font-size: 11px;
+        color: #c4c6c8;
+        background: rgba(12, 14, 18, 0.85);
+        padding: 8px 12px;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+    
+    .legend-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .legend-label-tag {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+
+    .legend-label-tag.latest {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .legend-label-tag.hover {
+        color: #3b82f6;
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .legend-overlay-val {
+        font-weight: 600;
+        margin-left: 2px;
+    }
+
+    .selected-stage-badge {
+        font-size: 13px;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1px solid transparent;
+        display: inline-block;
+        margin-left: 15px;
+        vertical-align: middle;
+    }
+
+    .badge-color-1 { color: #f14949; background-color: rgba(241, 73, 73, 0.15); border-color: rgba(241, 73, 73, 0.3); }
+    .badge-color-2 { color: #fb923c; background-color: rgba(251, 146, 60, 0.15); border-color: rgba(251, 146, 60, 0.3); }
+    .badge-color-3 { color: #fb7185; background-color: rgba(251, 113, 133, 0.15); border-color: rgba(251, 113, 133, 0.3); }
+    .badge-color-4 { color: #42a5f5; background-color: rgba(66, 165, 245, 0.15); border-color: rgba(66, 165, 245, 0.3); }
+    .badge-color-5 { color: #a78bfa; background-color: rgba(167, 139, 250, 0.15); border-color: rgba(167, 139, 250, 0.3); }
+    .badge-color-6 { color: #fb7185; background-color: rgba(251, 113, 133, 0.15); border-color: rgba(251, 113, 133, 0.3); }
+
+    .stage-entry-info {
+        display: flex;
+        gap: 20px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        align-items: center;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 6px 16px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    
+    .entry-info-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .entry-info-val {
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .return-positive {
+        color: #f14949 !important;
+    }
+
+    .return-negative {
+        color: #42a5f5 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+    <div class="page-title-area">
+        <a href="/buy_candidates?market={{ market }}" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Candidates</a>
+        <h1 class="page-title" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span>{{ name }}</span>
+            <span class="title-code">{{ code }}</span>
+            <span id="stock-display-stage" class="selected-stage-badge" style="margin-left: 0;">-</span>
+        </h1>
+        <p class="page-subtitle">이동평균선(5/20/40 SMA), 거래량, 대순환 MACD(단/중/장) 인터랙티브 상세 분석 차트</p>
+    </div>
+    
+    <div class="stage-entry-info">
+        <div class="entry-info-item">
+            <span><i class="fa-regular fa-calendar"></i> 진입일:</span>
+            <span id="stock-entry-date" class="entry-info-val">-</span>
+        </div>
+        <div class="entry-info-item">
+            <span><i class="fa-regular fa-clock"></i> 지속일수:</span>
+            <span id="stock-entry-days" class="entry-info-val">-</span>
+        </div>
+        <div class="entry-info-item">
+            <span><i class="fa-solid fa-calculator"></i> 누적 수익률:</span>
+            <span id="stock-entry-return" class="entry-info-val">-</span>
+        </div>
+    </div>
+</div>
+
+<div class="detail-container">
+    <div class="chart-card">
+        <div class="chart-header">
+            <!-- Period Controls -->
+            <div class="chart-controls">
+                <button class="btn-period active" onclick="setViewPeriod(90)">3개월 (기본)</button>
+                <button class="btn-period" onclick="setViewPeriod(180)">6개월</button>
+                <button class="btn-period" onclick="setViewPeriod(365)">1년</button>
+                <button class="btn-period" onclick="setViewPeriod(0)">전체 데이터</button>
+            </div>
+            
+            <!-- Legends -->
+            <div class="chart-legend">
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #f14949;"></span>
+                    <span>SMA5</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #ffb300;"></span>
+                    <span>SMA20</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #1e88e5;"></span>
+                    <span>SMA40</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #e2e8f0; height: 10px; width: 6px; display: inline-block;"></span>
+                    <span>Volume</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #f14949;"></span>
+                    <span>MACD-S (단기)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #ffb300;"></span>
+                    <span>MACD-M (중기)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #1e88e5;"></span>
+                    <span>MACD-L (장기)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- HTML Panels for Charts -->
+        <div class="chart-view-panel">
+            <div class="chart-wrapper">
+                <div id="price-legend" class="chart-legend-overlay"></div>
+                <div id="price-chart"></div>
+                <!-- Floating Info Tooltip -->
+                <div id="info-tooltip" class="detail-tooltip"></div>
+            </div>
+            <div class="chart-wrapper">
+                <div id="macd-legend" class="chart-legend-overlay"></div>
+                <div id="macd-chart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let fullChartData = [];
+    let priceChart, macdChart;
+    let candleSeries, volumeSeries, ma5Series, ma20Series, ma40Series;
+    let macdSSeries, macdMSeries, macdLSeries;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Fetch data from API
+        fetch(`/api/chart_data?code={{ code }}&market={{ market }}`)
+            .then(res => res.json())
+            .then(payload => {
+                fullChartData = payload.data;
+                
+                // Update stage badge and entry stats
+                if (fullChartData.length > 0) {
+                    const latestRecord = fullChartData[fullChartData.length - 1];
+                    const stageVal = latestRecord ? latestRecord.stage : 0;
+                    
+                    const stageNames = {
+                        1: "Stage 1 (정배열 상승)",
+                        2: "Stage 2 (상승세 둔화)",
+                        3: "Stage 3 (하락전환 초기)",
+                        4: "Stage 4 (역배열 하락)",
+                        5: "Stage 5 (하락세 둔화)",
+                        6: "Stage 6 (상승전환 초기)"
+                    };
+                    
+                    const badgeEl = document.getElementById('stock-display-stage');
+                    badgeEl.innerText = stageNames[stageVal] || `Stage ${stageVal}`;
+                    badgeEl.className = 'selected-stage-badge';
+                    badgeEl.classList.add(`badge-color-${stageVal}`);
+
+                    // Calculate stage entry date, elapsed days, and return rate
+                    let entryDate = '-';
+                    let entryDays = '-';
+                    let entryReturnStr = '-';
+                    let returnClass = '';
+
+                    if (stageVal !== 0) {
+                        let entryIdx = fullChartData.length - 1;
+                        while (entryIdx >= 0 && fullChartData[entryIdx].stage === stageVal) {
+                            entryIdx--;
+                        }
+                        entryIdx = entryIdx + 1;
+                        
+                        if (entryIdx < fullChartData.length) {
+                            const entryRecord = fullChartData[entryIdx];
+                            entryDate = entryRecord.time;
+                            
+                            const elapsedDays = fullChartData.length - entryIdx;
+                            entryDays = `${elapsedDays} 영업일째`;
+                            
+                            const entryPrice = entryRecord.close;
+                            const currentPrice = latestRecord.close;
+                            if (entryPrice > 0) {
+                                const returnRate = ((currentPrice - entryPrice) / entryPrice) * 100;
+                                const sign = returnRate > 0 ? '+' : '';
+                                entryReturnStr = `${sign}${returnRate.toFixed(2)}%`;
+                                if (returnRate > 0) {
+                                    returnClass = 'return-positive';
+                                } else if (returnRate < 0) {
+                                    returnClass = 'return-negative';
+                                }
+                            }
+                        }
+                    }
+
+                    const entryDateEl = document.getElementById('stock-entry-date');
+                    const entryDaysEl = document.getElementById('stock-entry-days');
+                    const entryReturnEl = document.getElementById('stock-entry-return');
+
+                    entryDateEl.innerText = entryDate;
+                    entryDaysEl.innerText = entryDays;
+                    entryReturnEl.innerText = entryReturnStr;
+                    entryReturnEl.className = 'entry-info-val ' + returnClass;
+                }
+                
+                initializeCharts();
+            })
+            .catch(err => {
+                console.error("Failed to load chart data:", err);
+                alert("차트 데이터를 가져오는 데 실패했습니다.");
+            });
+    });
+
+    function initializeCharts() {
+        const priceContainer = document.getElementById('price-chart');
+        const macdContainer = document.getElementById('macd-chart');
+        
+        const initialWidth = priceContainer.clientWidth || priceContainer.parentElement.clientWidth || 300;
+        
+        // 1. Create Price Chart (Candles, SMA, Volume)
+        priceChart = LightweightCharts.createChart(priceContainer, {
+            width: initialWidth,
+            height: 450,
+            layout: {
+                backgroundColor: '#161920',
+                textColor: '#c4c6c8',
+            },
+            grid: {
+                vertLines: { color: '#232731' },
+                horzLines: { color: '#232731' },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+            },
+            rightPriceScale: {
+                borderVisible: false,
+                autoScale: true,
+            },
+            timeScale: {
+                borderVisible: false,
+                rightOffset: 5,
+            }
+        });
+
+        // Candlesticks
+        candleSeries = priceChart.addCandlestickSeries({
+            upColor: '#f14949',
+            downColor: '#42a5f5',
+            borderDownColor: '#42a5f5',
+            borderUpColor: '#f14949',
+            wickDownColor: '#42a5f5',
+            wickUpColor: '#f14949',
+        });
+
+        // SMAs on Price Chart
+        ma5Series = priceChart.addLineSeries({ color: '#f14949', lineWidth: 1.5 });
+        ma20Series = priceChart.addLineSeries({ color: '#ffb300', lineWidth: 1.5 });
+        ma40Series = priceChart.addLineSeries({ color: '#1e88e5', lineWidth: 1.5 });
+
+        // Volume Series (Rendered in pane 0 of Price Chart but downscaled)
+        volumeSeries = priceChart.addHistogramSeries({
+            color: '#26a69a',
+            priceFormat: {
+                type: 'volume',
+            },
+            priceScaleId: '', // Overlay pane
+        });
+        
+        priceChart.priceScale('').applyOptions({
+            scaleMargins: {
+                top: 0.75, // Volume is in the lower 25% of price chart
+                bottom: 0,
+            },
+        });
+
+        // 2. Create MACD Chart (Sub-plot)
+        macdChart = LightweightCharts.createChart(macdContainer, {
+            width: initialWidth,
+            height: 220,
+            layout: {
+                backgroundColor: '#161920',
+                textColor: '#c4c6c8',
+            },
+            grid: {
+                vertLines: { color: '#232731' },
+                horzLines: { color: '#232731' },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+            },
+            rightPriceScale: {
+                borderVisible: false,
+                autoScale: true,
+            },
+            timeScale: {
+                borderVisible: false,
+            }
+        });
+
+        // MACD Series lines
+        macdSSeries = macdChart.addLineSeries({ color: '#f14949', lineWidth: 1.5 });
+        macdMSeries = macdChart.addLineSeries({ color: '#ffb300', lineWidth: 1.5 });
+        macdLSeries = macdChart.addLineSeries({ color: '#1e88e5', lineWidth: 1.5 });
+
+        // Bind data with unique time check to prevent duplicate key crashes
+        const candleData = [];
+        const volumeData = [];
+        const ma5Data = [];
+        const ma20Data = [];
+        const ma40Data = [];
+        const macdSData = [];
+        const macdMData = [];
+        const macdLData = [];
+        const seenTimes = new Set();
+
+        fullChartData.forEach(d => {
+            if (!d.time) return;
+            if (seenTimes.has(d.time)) return;
+            seenTimes.add(d.time);
+
+            candleData.push({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close });
+            
+            // Color volume histogram based on close comparison
+            const volColor = d.close >= d.open ? 'rgba(241, 73, 73, 0.4)' : 'rgba(66, 165, 245, 0.4)';
+            volumeData.push({ time: d.time, value: d.volume, color: volColor });
+            
+            if (d.ma5 !== null && d.ma5 !== undefined) ma5Data.push({ time: d.time, value: d.ma5 });
+            if (d.ma20 !== null && d.ma20 !== undefined) ma20Data.push({ time: d.time, value: d.ma20 });
+            if (d.ma40 !== null && d.ma40 !== undefined) ma40Data.push({ time: d.time, value: d.ma40 });
+            
+            if (d.macd_s !== null && d.macd_s !== undefined) macdSData.push({ time: d.time, value: d.macd_s });
+            if (d.macd_m !== null && d.macd_m !== undefined) macdMData.push({ time: d.time, value: d.macd_m });
+            if (d.macd_l !== null && d.macd_l !== undefined) macdLData.push({ time: d.time, value: d.macd_l });
+        });
+
+        candleSeries.setData(candleData);
+        volumeSeries.setData(volumeData);
+        ma5Series.setData(ma5Data);
+        ma20Series.setData(ma20Data);
+        ma40Series.setData(ma40Data);
+        
+        macdSSeries.setData(macdSData);
+        macdMSeries.setData(macdMData);
+        macdLSeries.setData(macdLData);
+
+        // 3. Sync TimeScales (Scrolling & Zooming sync)
+        let isSyncing = false;
+        
+        const priceTimeScale = priceChart.timeScale();
+        const macdTimeScale = macdChart.timeScale();
+
+        priceTimeScale.subscribeVisibleLogicalRangeChange(range => {
+            if (isSyncing) return;
+            isSyncing = true;
+            macdTimeScale.setVisibleLogicalRange(range);
+            isSyncing = false;
+        });
+
+        macdTimeScale.subscribeVisibleLogicalRangeChange(range => {
+            if (isSyncing) return;
+            isSyncing = true;
+            priceTimeScale.setVisibleLogicalRange(range);
+            isSyncing = false;
+        });
+
+        // Time conversion helper to safely map different Lightweight Charts time objects to YYYY-MM-DD string
+        function timeToString(time) {
+            if (!time) return null;
+            if (typeof time === 'string') return time;
+            if (typeof time === 'object' && time.year) {
+                const y = time.year;
+                const m = String(time.month).padStart(2, '0');
+                const d = String(time.day).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+            if (typeof time === 'number') {
+                const date = new Date(time * 1000);
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+            return null;
+        }
+
+        // 4. Hover Crosshair Sync & Tooltip implementation
+        function syncCrosshair(chartFrom, chartTo, param) {
+            try {
+                if (!param || !param.time) {
+                    chartTo.clearCrosshairPosition();
+                    return;
+                }
+                
+                // Safe lookup of the first series instance
+                let targetSeries = null;
+                if (param.seriesPrices && param.seriesPrices.size > 0) {
+                    targetSeries = param.seriesPrices.keys().next().value;
+                }
+                
+                if (targetSeries) {
+                    // Pass 0 as price to safely synchronize only the vertical timeline axis,
+                    // avoiding scale exceptions due to different price/indicator ranges.
+                    chartTo.setCrosshairPosition(0, param.time, targetSeries);
+                } else {
+                    chartTo.clearCrosshairPosition();
+                }
+            } catch (e) {
+                console.warn("syncCrosshair exception caught and bypassed:", e);
+            }
+        }
+
+        document.querySelector('.chart-view-panel').addEventListener('mouseleave', () => {
+            updateTooltip(null);
+            updateLegendOverlays(null, false);
+        });
+
+        priceChart.subscribeCrosshairMove(param => {
+            try {
+                syncCrosshair(priceChart, macdChart, param);
+                
+                // Handle mouse leave or programmatic moves without pointer x,y
+                if (!param || !param.point) {
+                    updateLegendOverlays(null, false);
+                    updateTooltip(null);
+                    return;
+                }
+                
+                const timeStr = timeToString(param.time);
+                if (timeStr) {
+                    const record = fullChartData.find(d => d.time === timeStr);
+                    updateLegendOverlays(record, true);
+                    updateTooltip(param, timeStr, 'price');
+                } else {
+                    updateLegendOverlays(null, false);
+                    updateTooltip(null);
+                }
+            } catch (err) {
+                console.error("priceChart crosshairMove error caught:", err);
+            }
+        });
+
+        macdChart.subscribeCrosshairMove(param => {
+            try {
+                syncCrosshair(macdChart, priceChart, param);
+                
+                // Handle mouse leave or programmatic moves without pointer x,y
+                if (!param || !param.point) {
+                    updateLegendOverlays(null, false);
+                    updateTooltip(null);
+                    return;
+                }
+                
+                const timeStr = timeToString(param.time);
+                if (timeStr) {
+                    const record = fullChartData.find(d => d.time === timeStr);
+                    updateLegendOverlays(record, true);
+                    updateTooltip(param, timeStr, 'macd');
+                } else {
+                    updateLegendOverlays(null, false);
+                    updateTooltip(null);
+                }
+            } catch (err) {
+                console.error("macdChart crosshairMove error caught:", err);
+            }
+        });
+
+        // Initialize Legend Overlay values with the latest date data
+        updateLegendOverlays(null, false);
+        setViewPeriod(90);
+
+        // Responsive handling using ResizeObserver
+        const resizeObserver = new ResizeObserver(entries => {
+            if (entries.length === 0 || !entries[0].contentRect) return;
+            const newWidth = entries[0].contentRect.width;
+            if (newWidth > 0) {
+                priceChart.resize(newWidth, 450);
+                macdChart.resize(newWidth, 220);
+            }
+        });
+        resizeObserver.observe(priceContainer);
+    }
+
+    function updateLegendOverlays(record, isHover = false) {
+        const priceLegend = document.getElementById('price-legend');
+        const macdLegend = document.getElementById('macd-legend');
+        
+        const numFormat = val => val !== undefined && val !== null ? val.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-';
+        
+        // 1. Get the latest record from full data
+        const latestRecord = fullChartData.length > 0 ? fullChartData[fullChartData.length - 1] : null;
+        
+        if (latestRecord) {
+            const isUpLatest = latestRecord.close >= latestRecord.open;
+            const colorStyleLatest = isUpLatest ? 'color: #f14949;' : 'color: #42a5f5;';
+            
+            const latestPriceHTML = `
+                <div class="legend-row">
+                    <span class="legend-label-tag latest">최근 기준</span>
+                    <span>날짜: <span class="legend-overlay-val">${latestRecord.time}</span></span>
+                    <span>시가: <span class="legend-overlay-val">${numFormat(latestRecord.open)}</span></span>
+                    <span>고가: <span class="legend-overlay-val">${numFormat(latestRecord.high)}</span></span>
+                    <span>저가: <span class="legend-overlay-val">${numFormat(latestRecord.low)}</span></span>
+                    <span>종가: <span class="legend-overlay-val" style="${colorStyleLatest}">${numFormat(latestRecord.close)}</span></span>
+                    <span>SMA5: <span class="legend-overlay-val" style="color: #f14949;">${numFormat(latestRecord.ma5)}</span></span>
+                    <span>SMA20: <span class="legend-overlay-val" style="color: #ffb300;">${numFormat(latestRecord.ma20)}</span></span>
+                    <span>SMA40: <span class="legend-overlay-val" style="color: #1e88e5;">${numFormat(latestRecord.ma40)}</span></span>
+                </div>
+            `;
+            
+            const latestMacdHTML = `
+                <div class="legend-row">
+                    <span class="legend-label-tag latest">최근 기준</span>
+                    <span>MACD-S: <span class="legend-overlay-val" style="color: #f14949;">${numFormat(latestRecord.macd_s)}</span></span>
+                    <span>MACD-M: <span class="legend-overlay-val" style="color: #ffb300;">${numFormat(latestRecord.macd_m)}</span></span>
+                    <span>MACD-L: <span class="legend-overlay-val" style="color: #1e88e5;">${numFormat(latestRecord.macd_l)}</span></span>
+                </div>
+            `;
+            
+            // 2. Prepare Hover Record row
+            let hoverPriceHTML = '';
+            let hoverMacdHTML = '';
+            
+            if (isHover && record) {
+                const isUpHover = record.close >= record.open;
+                const colorStyleHover = isUpHover ? 'color: #f14949;' : 'color: #42a5f5;';
+                
+                hoverPriceHTML = `
+                    <div class="legend-row">
+                        <span class="legend-label-tag hover">선택 위치</span>
+                        <span>날짜: <span class="legend-overlay-val">${record.time}</span></span>
+                        <span>시가: <span class="legend-overlay-val">${numFormat(record.open)}</span></span>
+                        <span>고가: <span class="legend-overlay-val">${numFormat(record.high)}</span></span>
+                        <span>저가: <span class="legend-overlay-val">${numFormat(record.low)}</span></span>
+                        <span>종가: <span class="legend-overlay-val" style="${colorStyleHover}">${numFormat(record.close)}</span></span>
+                        <span>SMA5: <span class="legend-overlay-val" style="color: #f14949;">${numFormat(record.ma5)}</span></span>
+                        <span>SMA20: <span class="legend-overlay-val" style="color: #ffb300;">${numFormat(record.ma20)}</span></span>
+                        <span>SMA40: <span class="legend-overlay-val" style="color: #1e88e5;">${numFormat(record.ma40)}</span></span>
+                    </div>
+                `;
+                
+                hoverMacdHTML = `
+                    <div class="legend-row">
+                        <span class="legend-label-tag hover">선택 위치</span>
+                        <span>MACD-S: <span class="legend-overlay-val" style="color: #f14949;">${numFormat(record.macd_s)}</span></span>
+                        <span>MACD-M: <span class="legend-overlay-val" style="color: #ffb300;">${numFormat(record.macd_m)}</span></span>
+                        <span>MACD-L: <span class="legend-overlay-val" style="color: #1e88e5;">${numFormat(record.macd_l)}</span></span>
+                    </div>
+                `;
+            } else {
+                hoverPriceHTML = `
+                    <div class="legend-row" style="color: #64748b; font-style: italic;">
+                        <span class="legend-label-tag hover" style="background: rgba(255,255,255,0.02); color: #64748b;">선택 위치</span>
+                        <span>차트 위에 마우스를 올리면 해당 날짜의 지표가 표기됩니다.</span>
+                    </div>
+                `;
+                hoverMacdHTML = `
+                    <div class="legend-row" style="color: #64748b; font-style: italic;">
+                        <span class="legend-label-tag hover" style="background: rgba(255,255,255,0.02); color: #64748b;">선택 위치</span>
+                        <span>차트 위에 마우스를 올리면 해당 날짜의 지표가 표기됩니다.</span>
+                    </div>
+                `;
+            }
+            
+            priceLegend.innerHTML = latestPriceHTML + hoverPriceHTML;
+            macdLegend.innerHTML = latestMacdHTML + hoverMacdHTML;
+        }
+    }
+
+    function updateTooltip(param, timeStr, chartType) {
+        const tooltip = document.getElementById('info-tooltip');
+        if (!tooltip) return;
+
+        if (!param || !timeStr) {
+            tooltip.style.display = 'none';
+            return;
+        }
+
+        const record = fullChartData.find(d => d.time === timeStr);
+        if (!record) {
+            tooltip.style.display = 'none';
+            return;
+        }
+
+        const isUp = record.close >= record.open;
+        const colorClass = isUp ? 'color-green' : 'color-blue';
+        const numFormat = val => val !== undefined && val !== null ? val.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-';
+        
+        const stageNames = {
+            1: "1단계 (정배열 상승)",
+            2: "2단계 (상승세 둔화)",
+            3: "3단계 (하락전환 초기)",
+            4: "4단계 (역배열 하락)",
+            5: "5단계 (하락세 둔화)",
+            6: "6단계 (상승전환 초기)"
+        };
+
+        tooltip.innerHTML = `
+            <div class="tooltip-title">${timeStr}</div>
+            <div class="tooltip-row"><span>시가:</span> <span class="tooltip-val">${numFormat(record.open)}</span></div>
+            <div class="tooltip-row"><span>고가:</span> <span class="tooltip-val">${numFormat(record.high)}</span></div>
+            <div class="tooltip-row"><span>저가:</span> <span class="tooltip-val">${numFormat(record.low)}</span></div>
+            <div class="tooltip-row"><span>종가:</span> <span class="tooltip-val ${colorClass}">${numFormat(record.close)}</span></div>
+            <div class="tooltip-row"><span>거래량:</span> <span class="tooltip-val">${numFormat(record.volume)}</span></div>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 5px 0;">
+            <div class="tooltip-row"><span>SMA5:</span> <span class="tooltip-val" style="color: #f14949;">${numFormat(record.ma5)}</span></div>
+            <div class="tooltip-row"><span>SMA20:</span> <span class="tooltip-val" style="color: #ffb300;">${numFormat(record.ma20)}</span></div>
+            <div class="tooltip-row"><span>SMA40:</span> <span class="tooltip-val" style="color: #1e88e5;">${numFormat(record.ma40)}</span></div>
+            <div class="tooltip-row"><span>Stage:</span> <span class="tooltip-val" style="font-weight:700; color: #a78bfa;">${stageNames[record.stage] || '알수없음'}</span></div>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 5px 0;">
+            <div class="tooltip-row"><span>MACD-S:</span> <span class="tooltip-val" style="color: #f14949;">${numFormat(record.macd_s)}</span></div>
+            <div class="tooltip-row"><span>MACD-M:</span> <span class="tooltip-val" style="color: #ffb300;">${numFormat(record.macd_m)}</span></div>
+            <div class="tooltip-row"><span>MACD-L:</span> <span class="tooltip-val" style="color: #1e88e5;">${numFormat(record.macd_l)}</span></div>
+        `;
+
+        if (param.point) {
+            const priceContainer = document.getElementById('price-chart');
+            const containerWidth = priceContainer.clientWidth || priceContainer.parentElement.clientWidth || 300;
+            
+            let left = param.point.x + 15;
+            let top = param.point.y + 15;
+            
+            if (chartType === 'macd') {
+                top += 460; // Offset by price chart height (450px) + gap
+            }
+
+            if (left + 190 > containerWidth) {
+                left = param.point.x - 205; // Flip to left if it overflows right boundary
+            }
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.display = 'block';
+        } else {
+            tooltip.style.display = 'none';
+        }
+    }
+
+    function setViewPeriod(days) {
+        if (!priceChart || fullChartData.length === 0) return;
+        
+        // Handle period button highlights
+        const buttons = document.querySelectorAll('.btn-period');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        
+        let matchingBtnIdx = 0;
+        if (days === 90) matchingBtnIdx = 0;
+        else if (days === 180) matchingBtnIdx = 1;
+        else if (days === 365) matchingBtnIdx = 2;
+        else if (days === 0) matchingBtnIdx = 3;
+        buttons[matchingBtnIdx].classList.add('active');
+
+        if (days === 0) {
+            // View All
+            priceChart.timeScale().fitContent();
+        } else {
+            // View recent N days
+            const len = fullChartData.length;
+            const fromIdx = Math.max(0, len - days);
+            const toIdx = len - 1;
+            
+            priceChart.timeScale().setVisibleRange({
+                from: fullChartData[fromIdx].time,
+                to: fullChartData[toIdx].time
+            });
+        }
+    }
+</script>
+{% endblock %}

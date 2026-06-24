@@ -1,0 +1,779 @@
+/* Core & Variables */
+:root {
+    --bg-main: #0c0e12;
+    --bg-card: rgba(22, 25, 32, 0.7);
+    --bg-card-hover: rgba(30, 34, 45, 0.85);
+    --border-color: rgba(255, 255, 255, 0.06);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --color-up: #f14949;      /* Red for 상승 */
+    --color-down: #42a5f5;    /* Blue for 하락 */
+    --color-warning: #ffb300; /* Yellow/Orange */
+    --color-accent: #3b82f6;  /* Blue accent */
+    --font-sans: 'Inter', 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-box: border-box;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navigation Bar */
+.navbar {
+    background-color: rgba(12, 14, 18, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.logo-icon {
+    font-size: 22px;
+    color: var(--color-accent);
+}
+
+.logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 0%, var(--text-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.nav-menu {
+    display: flex;
+    gap: 20px;
+}
+
+.nav-link {
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-link:hover {
+    color: var(--text-primary);
+}
+
+/* Main Layout */
+.main-content {
+    flex: 1;
+    max-width: 1300px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+/* Footer */
+.footer {
+    background-color: #06070a;
+    border-top: 1px solid var(--border-color);
+    padding: 30px 20px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.footer-container {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.footer-warning {
+    color: #4b5563;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Hero Section (Dashboard) */
+.dashboard-hero {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.hero-title {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #fff 30%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+    color: var(--text-secondary);
+    font-size: 16px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Market Grid Dashboard */
+.market-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.market-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 30px;
+    backdrop-filter: blur(10px);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+}
+
+.market-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.market-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.market-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.badge-kor {
+    background-color: rgba(241, 73, 73, 0.15);
+    color: var(--color-up);
+    border: 1px solid rgba(241, 73, 73, 0.3);
+}
+
+.badge-us {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.market-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.market-desc {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 25px;
+}
+
+/* Menu Items inside Card */
+.menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 18px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: scale(1.01);
+}
+
+.menu-item-icon {
+    font-size: 20px;
+    color: var(--color-up);
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(241, 73, 73, 0.08);
+    border-radius: 8px;
+}
+
+.icon-stage1 {
+    color: var(--color-warning);
+    background-color: rgba(255, 179, 0, 0.08);
+}
+
+.menu-item-text {
+    flex: 1;
+}
+
+.menu-item-title {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 2px;
+}
+
+.menu-item-desc {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.menu-item-arrow {
+    color: var(--text-muted);
+    font-size: 14px;
+    transition: transform 0.2s ease;
+}
+
+.menu-item:hover .menu-item-arrow {
+    transform: translateX(3px);
+    color: var(--text-primary);
+}
+
+/* Info Section */
+.info-section {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 20px;
+}
+
+.info-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.strategy-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.strategy-item h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.strategy-item p {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Page Headers */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 30px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.page-title-area {
+    flex: 1;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    transition: color 0.2s ease;
+}
+
+.btn-back:hover {
+    color: var(--text-primary);
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.page-meta-area {
+    display: flex;
+    align-items: center;
+}
+
+.total-badge {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.total-badge strong {
+    color: var(--color-accent);
+}
+
+/* Candidates Grid (Page 2) */
+.candidates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(580px, 1fr));
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+.candidate-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.candidate-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.ticker-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.ticker-name {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-primary);
+    max-width: 250px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ticker-code {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: monospace;
+}
+
+.ticker-price {
+    text-align: right;
+}
+
+.price-val {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.price-currency {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* Summary Chart Box */
+.summary-chart-box {
+    background-color: #161920;
+    border-radius: 8px;
+    padding: 10px 0;
+    margin-bottom: 15px;
+    height: 240px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.summary-chart-canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 10px 15px;
+}
+
+.footer-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.stat-val {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Stage Badges */
+.badge-stage-5 {
+    color: #fb923c;
+}
+
+.badge-stage-6 {
+    color: #fb7185;
+}
+
+.text-signal-date {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.text-duration {
+    color: #38bdf8;
+}
+
+/* Hover Overlay for Cards */
+.card-hover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(12, 14, 18, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.candidate-card:hover .card-hover-overlay {
+    opacity: 1;
+}
+
+.overlay-text {
+    background-color: var(--color-accent);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+/* Pagination Control */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 40px;
+}
+
+.page-btn {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(.disabled) {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.page-btn.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.page-info {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Empty States & Placeholders */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+}
+
+.empty-icon {
+    font-size: 50px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.empty-state p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.btn-action {
+    background-color: var(--color-accent);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.btn-action:hover {
+    transform: scale(1.02);
+}
+
+/* Market Statistics Dashboard Styles */
+.statistics-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(580px, 1fr));
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.statistics-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 25px;
+    backdrop-filter: blur(10px);
+}
+
+.stat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+}
+
+.btn-detail-trend {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.btn-detail-trend:hover {
+    color: #60a5fa;
+}
+
+.stat-content {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.stat-table-wrapper {
+    flex: 1.1;
+    width: 100%;
+}
+
+.stat-chart-wrapper {
+    flex: 0.9;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    transition: border-color 0.2s ease;
+}
+
+.stat-chart-wrapper:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.stat-chart-wrapper .chart-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.stat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.stat-table th, .stat-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.stat-table th {
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 11px;
+}
+
+.stat-table td.num {
+    text-align: right;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.stat-table .total-row td {
+    border-top: 1px solid var(--border-color);
+    border-bottom: none;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Responsive adjustments */
+@media(max-width: 992px) {
+    .candidates-grid {
+        grid-template-columns: 1fr;
+    }
+    .statistics-section {
+        grid-template-columns: 1fr;
+    }
+}
+@media(max-width: 768px) {
+    .stat-content {
+        flex-direction: column;
+    }
+}
+@media(max-width: 600px) {
+    .market-grid {
+        grid-template-columns: 1fr;
+    }
+    .strategy-cards {
+        grid-template-columns: 1fr;
+    }
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Index Badges for Stock Cards/Lists */
+.badge-index {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    display: inline-block;
+    vertical-align: middle;
+    text-transform: uppercase;
+}
+
+.badge-kospi200 {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.badge-kosdaq150 {
+    background-color: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}

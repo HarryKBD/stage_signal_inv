@@ -1,0 +1,21 @@
+# Database
+stock_data.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+env/
+venv/
+
+# Temporary data files
+*.csv
+Basic.txt
+
+# Editor / System configurations
+.DS_Store
+.vscode/
+.idea/
