@@ -33,7 +33,11 @@ mov_invest/
 ├── scan_early_buy.py           # (로컬용) Early Buy 종목 스캔 및 이미지 차트 생성 유틸
 ├── scan_buy_timing.py          # (로컬용) Stage 1 진입 종목 스캔 유틸
 ├── visualize_kojiro.py         # (로컬용) 특정 종목의 Kojiro Cycle 분석 고해상도 차트 생성 스크립트
-└── SETUP.md                    # 개발 환경 세팅 및 구동 가이드
+├── SETUP.md                    # 개발 환경 세팅 및 구동 가이드
+│
+└── doc/                        # 백테스트 및 시뮬레이션 문서화 폴더 [NEW]
+    ├── reports/                # 마크다운 기반 백테스트 및 시뮬레이션 결과 보고서들
+    └── simulations/            # 백테스트 시뮬레이션 검증에 사용된 파이썬 코드 원본들
 ```
 
 ---
