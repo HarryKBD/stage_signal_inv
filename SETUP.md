@@ -44,20 +44,32 @@
 
 ---
 
-## 🗄️ 3. 데이터베이스 초기화 및 데이터 백필링
+## 🗄️ 3. 데이터베이스 초기화 및 데이터 수집 (Backfill)
 
 Git 저장소에는 대용량 데이터베이스 파일(`stock_data.db`)이 제외되어 있으므로, 처음 셋업 시 로컬 데이터베이스를 생성하고 과거 6년 치 주가 및 시그널 통계를 채워 넣어야 합니다.
 
-1. **마켓 데이터 수집 및 과거 신호 백필(Backfill) 실행**:
-   `scanner.py` 스크립트를 실행하면 `stock_data.db` 파일을 자동으로 초기화하고, 필요한 주가 수집 및 6개년 시각화용 Stage 통계 계산을 일괄 진행합니다.
-   ```bash
-   # uv 사용 시
-   uv run python scanner.py
-   
-   # pip 가상환경 활성화 상태 시
-   python scanner.py
-   ```
-   *(참고: 6개년 1,500영업일 이상의 전체 시계열 Stage 정보를 계산하고 적재하는 작업이므로 최초 실행 시 수 분에서 수십 분의 시간이 소요될 수 있습니다.)*
+### 단계 1: 상장 종목 목록 및 지수 매핑 데이터 초기화
+먼저, `initialize_db.py`를 실행하여 한국 및 미국 상장 종목 리스트를 가져오고, 지수 구성 정보(`index_constituents.json`)를 바탕으로 KOSPI 200, KOSDAQ 150 매핑 플래그를 세팅합니다.
+```bash
+# uv 사용 시
+uv run python initialize_db.py
+
+# 일반 python 실행 시
+python initialize_db.py
+```
+*(성공적으로 실행되면 `stock_data.db` 파일이 생성되고 `tickers` 및 `us_tickers` 테이블이 채워집니다.)*
+
+### 단계 2: 과거 6개년 주가 및 Stage 시그널 자동 수집
+`incremental_update.py`를 실행하면 데이터베이스에 있는 모든 종목에 대해 FinanceDataReader로부터 과거 주가 데이터(2000년 혹은 2020년 이후 전체 기간)를 병렬 다운로드합니다. 
+주가 수집이 완료되면 내부적으로 `scanner.py`가 자동으로 호출되어 순환 주기 Stage 계산 및 실시간 신호 캐싱, 과거 추세 통계 백필링까지 완벽히 마무리합니다.
+```bash
+# uv 사용 시
+uv run python incremental_update.py
+
+# 일반 python 실행 시
+python incremental_update.py
+```
+*(참고: 6개년 1,500영업일 이상의 전체 시계열 Stage 정보를 계산하고 적재하는 작업이므로 최초 실행 시 인터넷 속도 및 CPU 사양에 따라 수십 분 이상의 시간이 소요될 수 있습니다.)*
 
 ---
 
