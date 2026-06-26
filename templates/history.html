@@ -358,7 +358,18 @@
             <h3 class="trend-title" id="trend-chart-title"><i class="fa-solid fa-chart-area" style="color: var(--color-accent);"></i> 6-Month Signal Distribution Trend</h3>
             <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">* 최근 120영업일 기준 시계열 통계</span>
         </div>
-        <div id="trend-chart" style="min-height: 350px;"></div>
+        <!-- 외부 고정 레전드 영역 추가 (Y축 차단 방지) -->
+        <div id="trend-chart-legend" style="
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        "></div>
+        <div id="trend-chart" style="min-height: 480px;"></div>
     </div>
 
     <!-- Daily Quick Summary Cards -->
@@ -581,26 +592,8 @@
                 }
             });
 
-            // Create or query Legend Overlay (Left-Top)
-            let legendEl = document.getElementById('trend-chart-legend');
-            if (!legendEl) {
-                legendEl = document.createElement('div');
-                legendEl.id = 'trend-chart-legend';
-                legendEl.style.position = 'absolute';
-                legendEl.style.left = '20px';
-                legendEl.style.top = '15px';
-                legendEl.style.zIndex = '50';
-                legendEl.style.background = 'rgba(22, 25, 32, 0.85)';
-                legendEl.style.backdropFilter = 'blur(6px)';
-                legendEl.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-                legendEl.style.borderRadius = '8px';
-                legendEl.style.padding = '8px 14px';
-                legendEl.style.fontSize = '12px';
-                legendEl.style.color = '#e2e8f0';
-                legendEl.style.pointerEvents = 'none';
-                legendEl.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.4)';
-                container.appendChild(legendEl);
-            }
+            // Query Legend Overlay (Static element in DOM above the chart)
+            const legendEl = document.getElementById('trend-chart-legend');
 
             // 2. Define colors & types
             const seriesColors = [
