@@ -550,20 +550,10 @@
             
             const container = document.querySelector("#trend-chart");
             container.innerHTML = '';
-            container.style.position = 'relative'; // For tooltip placement
-
-            if (chartInstance) {
-                try {
-                    chartInstance.remove();
-                } catch(err) {
-                    console.warn("Error removing chart instance:", err);
-                }
-            }
-
-            // 1. Create Chart
+            container.style.position = 'relative'; // For tooltip place            // 1. Create Chart
             const chart = LightweightCharts.createChart(container, {
                 width: container.clientWidth,
-                height: 350,
+                height: 480, // Increased height for better visibility
                 layout: {
                     background: { type: 'solid', color: 'transparent' },
                     textColor: '#94a3b8',
@@ -590,6 +580,27 @@
                     mode: LightweightCharts.CrosshairMode.Normal,
                 }
             });
+
+            // Create or query Legend Overlay (Left-Top)
+            let legendEl = document.getElementById('trend-chart-legend');
+            if (!legendEl) {
+                legendEl = document.createElement('div');
+                legendEl.id = 'trend-chart-legend';
+                legendEl.style.position = 'absolute';
+                legendEl.style.left = '20px';
+                legendEl.style.top = '15px';
+                legendEl.style.zIndex = '50';
+                legendEl.style.background = 'rgba(22, 25, 32, 0.85)';
+                legendEl.style.backdropFilter = 'blur(6px)';
+                legendEl.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+                legendEl.style.borderRadius = '8px';
+                legendEl.style.padding = '8px 14px';
+                legendEl.style.fontSize = '12px';
+                legendEl.style.color = '#e2e8f0';
+                legendEl.style.pointerEvents = 'none';
+                legendEl.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.4)';
+                container.appendChild(legendEl);
+            }
 
             // 2. Define colors & types
             const seriesColors = [
@@ -634,6 +645,42 @@
                 addedSeries.push({ series: lineSeries, name: s.name, color: '#ffb300', isPrice: true });
             }
 
+            // Compute last day (most recent) values for default display
+            let lastDayValues = { date: 'N/A', early_buy: 0, stage1: 0, stage4: 0, price: null };
+            if (result.series.length > 0 && result.series[0].data.length > 0) {
+                const len = result.series[0].data.length;
+                const lastIdx = len - 1;
+                lastDayValues.date = result.series[0].data[lastIdx].x;
+                lastDayValues.early_buy = result.series[0].data[lastIdx].y;
+                lastDayValues.stage1 = result.series.length > 1 ? result.series[1].data[lastIdx].y : 0;
+                lastDayValues.stage4 = result.series.length > 2 ? result.series[2].data[lastIdx].y : 0;
+                lastDayValues.price = result.series.length === 4 ? result.series[3].data[lastIdx].y : null;
+            }
+
+            // Legend renderer helper
+            function updateChartLegend(data) {
+                let priceHtml = '';
+                if (data.price !== null && data.price !== undefined) {
+                    const priceFormatted = Math.round(data.price).toLocaleString() + '원';
+                    priceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${priceFormatted}</span>`;
+                }
+                
+                legendEl.innerHTML = `
+                    <div style="font-weight: 700; color: var(--text-muted); font-size: 10px; margin-bottom: 2px; text-transform: uppercase;">
+                        ${data.isHover ? '● 마우스 포인터 위치' : '● 마지막 날짜 (최신)'} [${data.date}]
+                    </div>
+                    <div style="display: flex; gap: 15px; font-weight: 600; flex-wrap: wrap; font-family: sans-serif;">
+                        <span style="color: #3b82f6;">EB: ${data.early_buy}</span>
+                        <span style="color: #10b981;">Stage 1: ${data.stage1}</span>
+                        <span style="color: #ef4444;">Stage 4: ${data.stage4}</span>
+                        ${priceHtml}
+                    </div>
+                `;
+            }
+
+            // Set default legend to last day values
+            updateChartLegend({ ...lastDayValues, isHover: false });
+
             // 3. Create Tooltip element
             const tooltip = document.createElement('div');
             tooltip.style.position = 'absolute';
@@ -667,6 +714,7 @@
             chart.subscribeCrosshairMove(param => {
                 if (!param.time || param.point === undefined || param.point.x < 0 || param.point.x > container.clientWidth || param.point.y < 0 || param.point.y > container.clientHeight) {
                     tooltip.style.display = 'none';
+                    updateChartLegend({ ...lastDayValues, isHover: false });
                     return;
                 }
 
@@ -674,10 +722,18 @@
                 let html = `<div style="font-weight: 700; margin-bottom: 6px; color: var(--text-muted);">${timeStr}</div>`;
 
                 let hasValue = false;
+                let hoverValues = { date: timeStr, early_buy: 0, stage1: 0, stage4: 0, price: null, isHover: true };
+
                 addedSeries.forEach(sItem => {
                     const price = param.seriesPrices.get(sItem.series);
                     if (price !== undefined && price !== null) {
                         hasValue = true;
+                        
+                        if (sItem.name.includes('Early Buy')) hoverValues.early_buy = price;
+                        else if (sItem.name.includes('Stage 1')) hoverValues.stage1 = price;
+                        else if (sItem.name.includes('Stage 4')) hoverValues.stage4 = price;
+                        else if (sItem.isPrice) hoverValues.price = price;
+
                         const valFormatted = sItem.isPrice ? Math.round(price).toLocaleString() + '원' : price;
                         html += `<div style="display: flex; justify-content: space-between; gap: 15px; margin-bottom: 2px;">
                             <span style="color: ${sItem.color}; font-weight: 600;">● ${sItem.name}</span>
@@ -704,8 +760,11 @@
                     
                     tooltip.style.left = left + 'px';
                     tooltip.style.top = top + 'px';
+
+                    updateChartLegend(hoverValues);
                 } else {
                     tooltip.style.display = 'none';
+                    updateChartLegend({ ...lastDayValues, isHover: false });
                 }
             });
 
@@ -713,7 +772,7 @@
             const resizeObserver = new ResizeObserver(entries => {
                 if (entries.length === 0 || !entries[0].contentRect) return;
                 const { width } = entries[0].contentRect;
-                chart.resize(width, 350);
+                chart.resize(width, 480);
             });
             resizeObserver.observe(container);
 
