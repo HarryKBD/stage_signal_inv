@@ -657,29 +657,76 @@
                 lastDayValues.price = result.series.length === 4 ? result.series[3].data[lastIdx].y : null;
             }
 
-            // Legend renderer helper
-            function updateChartLegend(data) {
+            // Legend renderer helper (Initialize layout with pinned latest values)
+            function initChartLegend() {
+                let lastPriceHtml = '';
+                if (lastDayValues.price !== null && lastDayValues.price !== undefined) {
+                    const priceFormatted = Math.round(lastDayValues.price).toLocaleString() + '원';
+                    lastPriceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${priceFormatted}</span>`;
+                }
+                
+                legendEl.innerHTML = `
+                    <div style="margin-bottom: 6px;">
+                        <div style="font-weight: 700; color: var(--text-muted); font-size: 10px; margin-bottom: 2px; text-transform: uppercase;">
+                            ● 최신 영업일 [${lastDayValues.date}]
+                        </div>
+                        <div style="display: flex; gap: 15px; font-weight: 600; flex-wrap: wrap; font-family: sans-serif; font-size: 12px; color: #e2e8f0;">
+                            <span style="color: #3b82f6;">EB: ${lastDayValues.early_buy}</span>
+                            <span style="color: #10b981;">S1: ${lastDayValues.stage1}</span>
+                            <span style="color: #ef4444;">S4: ${lastDayValues.stage4}</span>
+                            ${lastPriceHtml}
+                        </div>
+                    </div>
+                    <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 6px;">
+                        <div style="font-weight: 700; color: var(--text-muted); font-size: 10px; margin-bottom: 2px; text-transform: uppercase;">
+                            ● 마우스 포인터 위치 <span id="legend-hover-date" style="color: var(--text-primary); font-weight: 800;">[-]</span>
+                        </div>
+                        <div id="legend-hover-vals" style="display: flex; gap: 15px; font-weight: 600; flex-wrap: wrap; font-family: sans-serif; font-size: 12px; color: var(--text-muted);">
+                            <span style="color: rgba(59, 130, 246, 0.5);">EB: -</span>
+                            <span style="color: rgba(16, 185, 129, 0.5);">S1: -</span>
+                            <span style="color: rgba(239, 68, 68, 0.5);">S4: -</span>
+                            | <span style="color: rgba(255, 179, 0, 0.5);">ETF 종가: -</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Initialize legend layout
+            initChartLegend();
+
+            // Hover updates renderer helper
+            function updateHoverLegend(data) {
+                const dateLbl = document.getElementById('legend-hover-date');
+                const valsRow = document.getElementById('legend-hover-vals');
+                if (!dateLbl || !valsRow) return;
+
+                if (!data) {
+                    dateLbl.innerText = '[-]';
+                    valsRow.innerHTML = `
+                        <span style="color: rgba(59, 130, 246, 0.5);">EB: -</span>
+                        <span style="color: rgba(16, 185, 129, 0.5);">S1: -</span>
+                        <span style="color: rgba(239, 68, 68, 0.5);">S4: -</span>
+                        | <span style="color: rgba(255, 179, 0, 0.5);">ETF 종가: -</span>
+                    `;
+                    valsRow.style.color = 'var(--text-muted)';
+                    return;
+                }
+
                 let priceHtml = '';
                 if (data.price !== null && data.price !== undefined) {
                     const priceFormatted = Math.round(data.price).toLocaleString() + '원';
                     priceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${priceFormatted}</span>`;
                 }
-                
-                legendEl.innerHTML = `
-                    <div style="font-weight: 700; color: var(--text-muted); font-size: 10px; margin-bottom: 2px; text-transform: uppercase;">
-                        ${data.isHover ? '● 마우스 포인터 위치' : '● 마지막 날짜 (최신)'} [${data.date}]
-                    </div>
-                    <div style="display: flex; gap: 15px; font-weight: 600; flex-wrap: wrap; font-family: sans-serif;">
-                        <span style="color: #3b82f6;">EB: ${data.early_buy}</span>
-                        <span style="color: #10b981;">Stage 1: ${data.stage1}</span>
-                        <span style="color: #ef4444;">Stage 4: ${data.stage4}</span>
-                        ${priceHtml}
-                    </div>
+
+                dateLbl.innerText = `[${data.date}]`;
+                valsRow.style.color = '#e2e8f0';
+                valsRow.innerHTML = `
+                    <span style="color: #3b82f6;">EB: ${data.early_buy}</span>
+                    <span style="color: #10b981;">S1: ${data.stage1}</span>
+                    <span style="color: #ef4444;">S4: ${data.stage4}</span>
+                    ${priceHtml}
                 `;
             }
-
-            // Set default legend to last day values
-            updateChartLegend({ ...lastDayValues, isHover: false });
 
             // 3. Create Tooltip element
             const tooltip = document.createElement('div');
@@ -714,7 +761,7 @@
             chart.subscribeCrosshairMove(param => {
                 if (!param.time || param.point === undefined || param.point.x < 0 || param.point.x > container.clientWidth || param.point.y < 0 || param.point.y > container.clientHeight) {
                     tooltip.style.display = 'none';
-                    updateChartLegend({ ...lastDayValues, isHover: false });
+                    updateHoverLegend(null);
                     return;
                 }
 
@@ -761,10 +808,10 @@
                     tooltip.style.left = left + 'px';
                     tooltip.style.top = top + 'px';
 
-                    updateChartLegend(hoverValues);
+                    updateHoverLegend(hoverValues);
                 } else {
                     tooltip.style.display = 'none';
-                    updateChartLegend({ ...lastDayValues, isHover: false });
+                    updateHoverLegend(null);
                 }
             });
 
