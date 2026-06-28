@@ -129,7 +129,9 @@ def process_single_stock_combined(code, name, df_stock):
         'stage1': None, 
         'stage4': None,
         'curr_stage': curr_stage,
-        'code': code
+        'code': code,
+        'name': name,
+        'close': float(curr['Close'])
     }
     
     # 1. Early Buy Check (Stage 5/6 + MACD rising)
@@ -260,23 +262,17 @@ def analyze_single_stock(code, name, group, market, min_date_dt):
         stage = int(row['Stage'])
         close = float(row['Close'])
         
+        # Stage signal
+        if stage in [1, 2, 3, 4, 5, 6]:
+            records.append({
+                'Date': date_str, 'Market': market, 'Code': code, 'Name': name,
+                'SignalType': f'stage{stage}', 'Stage': stage, 'Close': close
+            })
         # Early buy
         if stage in [5, 6] and row['is_macd_rising']:
             records.append({
                 'Date': date_str, 'Market': market, 'Code': code, 'Name': name,
                 'SignalType': 'early_buy', 'Stage': stage, 'Close': close
-            })
-        # Stage 1
-        if stage == 1:
-            records.append({
-                'Date': date_str, 'Market': market, 'Code': code, 'Name': name,
-                'SignalType': 'stage1', 'Stage': stage, 'Close': close
-            })
-        # Stage 4
-        if stage == 4:
-            records.append({
-                'Date': date_str, 'Market': market, 'Code': code, 'Name': name,
-                'SignalType': 'stage4', 'Stage': stage, 'Close': close
             })
     return records
 
@@ -345,6 +341,7 @@ def scan_market(market):
         latest_date_str = df['Date'].max().strftime('%Y-%m-%d')
         
     workers = min(os.cpu_count() or 4, 8)
+    all_stages = []
     with ProcessPoolExecutor(max_workers=workers) as executor:
         futures = {executor.submit(process_single_stock_combined, t[0], t[1], t[2]): t for t in tasks}
         for future in as_completed(futures):
@@ -363,6 +360,12 @@ def scan_market(market):
                     
                     if res['curr_stage'] in [1, 2, 3, 4, 5, 6]:
                         today_stages.append(res['curr_stage'])
+                        all_stages.append({
+                            'Code': res['code'],
+                            'Name': res['name'],
+                            'Stage': res['curr_stage'],
+                            'Close': res['close']
+                        })
             except Exception as e:
                 code_err = futures[future][0]
                 print(f"Error processing {code_err}: {e}")
@@ -370,7 +373,7 @@ def scan_market(market):
     print(f"[{market.upper()}] Found {len(early_buy_results)} early buy, {len(stage1_results)} stage 1, {len(stage4_results)} stage 4 candidates.")
     
     # Save results to DB cache tables
-    save_to_cache(market, early_buy_results, stage1_results, stage4_results, latest_date_str)
+    save_to_cache(market, early_buy_results, stage1_results, stage4_results, all_stages, latest_date_str)
     
     # Record today's stage statistics
     if today_stages:
@@ -378,7 +381,7 @@ def scan_market(market):
         
     return early_buy_results, stage1_results, stage4_results
 
-def save_to_cache(market, early_buy, stage1, stage4, scan_date):
+def save_to_cache(market, early_buy, stage1, stage4, all_stages, scan_date):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -415,17 +418,11 @@ def save_to_cache(market, early_buy, stage1, stage4, scan_date):
         VALUES (?, ?, ?, ?, 'early_buy', ?, ?)
         """, (scan_date, market, r['Code'], r['Name'], r['Stage'], r['Close']))
         
-    for r in stage1:
+    for r in all_stages:
         cursor.execute("""
         INSERT OR REPLACE INTO historical_signals (Date, Market, Code, Name, SignalType, Stage, Close)
-        VALUES (?, ?, ?, ?, 'stage1', ?, ?)
-        """, (scan_date, market, r['Code'], r['Name'], r['Stage'], r['Close']))
-        
-    for r in stage4:
-        cursor.execute("""
-        INSERT OR REPLACE INTO historical_signals (Date, Market, Code, Name, SignalType, Stage, Close)
-        VALUES (?, ?, ?, ?, 'stage4', ?, ?)
-        """, (scan_date, market, r['Code'], r['Name'], r['Stage'], r['Close']))
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (scan_date, market, r['Code'], r['Name'], f"stage{r['Stage']}", r['Stage'], r['Close']))
         
     conn.commit()
     conn.close()

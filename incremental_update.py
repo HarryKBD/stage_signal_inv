@@ -178,7 +178,7 @@ def incremental_update(market_type='US', max_workers=20):
             last_date = datetime.strptime(last_date_str[:10], '%Y-%m-%d')
             start_date = (last_date + timedelta(days=1)).strftime('%Y-%m-%d')
         else:
-            start_date = '2000-01-01'
+            start_date = '2020-01-01'
             
         if start_date <= end_date:
             tasks.append((code, name, market, start_date, end_date))

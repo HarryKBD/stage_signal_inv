@@ -598,7 +598,7 @@
                     horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
                 },
                 rightPriceScale: {
-                    visible: result.series.length === 4,
+                    visible: result.series.some(s => s.type === 'line' && s.name !== 'Total Tickers'),
                     borderVisible: false,
                     textColor: '#ffb300',
                 },
@@ -618,58 +618,113 @@
 
             const legendEl = document.getElementById('trend-chart-legend');
 
-            const seriesColors = [
-                { line: '#3b82f6', top: 'rgba(59, 130, 246, 0.3)', bottom: 'rgba(59, 130, 246, 0.0)' },
-                { line: '#10b981', top: 'rgba(16, 185, 129, 0.3)', bottom: 'rgba(16, 185, 129, 0.0)' },
-                { line: '#ef4444', top: 'rgba(239, 68, 68, 0.3)', bottom: 'rgba(239, 68, 68, 0.0)' }
-            ];
+            const seriesConfig = {
+                'Early Buy': { color: '#3b82f6', width: 2 },
+                'Stage 1 (Stable Upward)': { color: '#10b981', width: 2 },
+                'Stage 4 (Stable Downward)': { color: '#ef4444', width: 2 }
+            };
 
             const addedSeries = [];
+            result.series.forEach(s => {
+                const config = seriesConfig[s.name];
+                if (config) {
+                    const lineSeries = chart.addLineSeries({
+                        priceScaleId: 'left',
+                        title: s.name,
+                        color: config.color,
+                        lineWidth: config.width,
+                        lineStyle: config.lineStyle || LightweightCharts.LineStyle.Solid
+                    });
+                    const data = s.data.map(item => ({ time: item.x, value: item.y }));
+                    lineSeries.setData(data);
+                    addedSeries.push({ series: lineSeries, name: s.name, color: config.color, isPrice: false });
+                } else if (s.type === 'line' && s.name !== 'Total Tickers') {
+                    // ETF price
+                    const lineSeries = chart.addLineSeries({
+                        priceScaleId: 'right',
+                        title: s.name,
+                        color: '#ffb300',
+                        lineWidth: 3,
+                    });
+                    const data = s.data.map(item => ({ time: item.x, value: item.y }));
+                    lineSeries.setData(data);
+                    addedSeries.push({ series: lineSeries, name: s.name, color: '#ffb300', isPrice: true });
+                }
+            });
 
-            for (let i = 0; i < 3; i++) {
-                if (i >= result.series.length) break;
-                const s = result.series[i];
-                const color = seriesColors[i];
-                const areaSeries = chart.addAreaSeries({
-                    priceScaleId: 'left',
-                    title: s.name,
-                    lineColor: color.line,
-                    topColor: color.top,
-                    bottomColor: color.bottom,
-                    lineWidth: 2,
+            function getValuesForIndex(idx) {
+                const vals = {
+                    date: 'N/A',
+                    total: 0,
+                    early_buy: 0,
+                    stage1: 0,
+                    stage2: 0,
+                    stage3: 0,
+                    stage4: 0,
+                    stage5: 0,
+                    stage6: 0,
+                    price: null
+                };
+                if (result.series.length === 0 || idx < 0) return vals;
+                
+                const firstSeries = result.series[0];
+                if (idx >= firstSeries.data.length) return vals;
+                vals.date = firstSeries.data[idx].x;
+                
+                result.series.forEach(s => {
+                    const val = s.data[idx].y;
+                    if (s.name === 'Early Buy') vals.early_buy = val;
+                    else if (s.name === 'Stage 1 (Stable Upward)') vals.stage1 = val;
+                    else if (s.name === 'Stage 2 (Upward Slowdown)') vals.stage2 = val;
+                    else if (s.name === 'Stage 3 (Early Downward)') vals.stage3 = val;
+                    else if (s.name === 'Stage 4 (Stable Downward)') vals.stage4 = val;
+                    else if (s.name === 'Stage 5 (Downward Slowdown)') vals.stage5 = val;
+                    else if (s.name === 'Stage 6 (Early Upward)') vals.stage6 = val;
+                    else if (s.name === 'Total Tickers') vals.total = val;
+                    else if (s.type === 'line') vals.price = val;
                 });
-                const data = s.data.map(item => ({ time: item.x, value: item.y }));
-                areaSeries.setData(data);
-                addedSeries.push({ series: areaSeries, name: s.name, color: color.line, isPrice: false });
+                return vals;
             }
 
-            if (result.series.length === 4) {
-                const s = result.series[3];
-                const lineSeries = chart.addLineSeries({
-                    priceScaleId: 'right',
-                    title: s.name,
-                    color: '#ffb300',
-                    lineWidth: 3,
-                });
-                const data = s.data.map(item => ({ time: item.x, value: item.y }));
-                lineSeries.setData(data);
-                addedSeries.push({ series: lineSeries, name: s.name, color: '#ffb300', isPrice: true });
-            }
-
-            let lastDayValues = { date: 'N/A', early_buy: 0, stage1: 0, stage4: 0, price: null };
-            if (result.series.length > 0 && result.series[0].data.length > 0) {
-                const len = result.series[0].data.length;
-                const lastIdx = len - 1;
-                lastDayValues.date = result.series[0].data[lastIdx].x;
-                lastDayValues.early_buy = result.series[0].data[lastIdx].y;
-                lastDayValues.stage1 = result.series.length > 1 ? result.series[1].data[lastIdx].y : 0;
-                lastDayValues.stage4 = result.series.length > 2 ? result.series[2].data[lastIdx].y : 0;
-                lastDayValues.price = result.series.length === 4 ? result.series[3].data[lastIdx].y : null;
-            }
+            const lastIdx = result.series.length > 0 && result.series[0].data.length > 0 ? result.series[0].data.length - 1 : -1;
+            let lastDayValues = getValuesForIndex(lastIdx);
 
             function formatPrice(val) {
                 if (val === null || val === undefined) return '';
                 return market === 'kor' ? Math.round(val).toLocaleString() + '원' : '$' + parseFloat(val).toFixed(2);
+            }
+
+            function getLegendHtml(data, isHover = false) {
+                if (!data || data.date === 'N/A') {
+                    return `
+                        <span style="color: rgba(148, 163, 184, 0.5);">Total: -</span>
+                        <span style="color: rgba(59, 130, 246, 0.5);">EB: -</span>
+                        <span style="color: rgba(16, 185, 129, 0.5);">S1: -</span>
+                        <span style="color: rgba(132, 204, 22, 0.5);">S2: -</span>
+                        <span style="color: rgba(245, 158, 11, 0.5);">S3: -</span>
+                        <span style="color: rgba(239, 68, 68, 0.5);">S4: -</span>
+                        <span style="color: rgba(236, 72, 153, 0.5);">S5: -</span>
+                        <span style="color: rgba(6, 182, 212, 0.5);">S6: -</span>
+                    `;
+                }
+                
+                let priceHtml = '';
+                if (data.price !== null && data.price !== undefined) {
+                    priceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${formatPrice(data.price)}</span>`;
+                }
+                
+                const opacity = isHover ? '1.0' : '0.8';
+                return `
+                    <span style="color: #94a3b8; opacity: ${opacity}; font-weight: 700;">Total: ${data.total}</span>
+                    <span style="color: #3b82f6; opacity: ${opacity}; font-weight: 700;">EB: ${data.early_buy}</span>
+                    <span style="color: #10b981; opacity: ${opacity}; font-weight: 700;">S1: ${data.stage1}</span>
+                    <span style="color: #84cc16; opacity: ${opacity}; font-weight: 700;">S2: ${data.stage2}</span>
+                    <span style="color: #f59e0b; opacity: ${opacity}; font-weight: 700;">S3: ${data.stage3}</span>
+                    <span style="color: #ef4444; opacity: ${opacity}; font-weight: 700;">S4: ${data.stage4}</span>
+                    <span style="color: #ec4899; opacity: ${opacity}; font-weight: 700;">S5: ${data.stage5}</span>
+                    <span style="color: #06b6d4; opacity: ${opacity}; font-weight: 700;">S6: ${data.stage6}</span>
+                    ${priceHtml}
+                `;
             }
 
             function initChartLegend() {
@@ -683,10 +738,7 @@
                             ● 최신 영업일 [${lastDayValues.date}]
                         </div>
                         <div style="display: flex; gap: 15px; font-weight: 600; flex-wrap: wrap; font-family: sans-serif; font-size: 12px; color: #e2e8f0;">
-                            <span style="color: #3b82f6;">EB: ${lastDayValues.early_buy}</span>
-                            <span style="color: #10b981;">S1: ${lastDayValues.stage1}</span>
-                            <span style="color: #ef4444;">S4: ${lastDayValues.stage4}</span>
-                            ${lastPriceHtml}
+                            ${getLegendHtml(lastDayValues, false)}
                         </div>
                     </div>
                     <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 6px;">
@@ -694,10 +746,7 @@
                             ● 마우스 포인터 위치 <span id="legend-hover-date" style="color: var(--text-primary); font-weight: 800;">[-]</span>
                         </div>
                         <div id="legend-hover-vals" style="display: flex; gap: 15px; font-weight: 600; flex-wrap: wrap; font-family: sans-serif; font-size: 12px; color: var(--text-muted);">
-                            <span style="color: rgba(59, 130, 246, 0.5);">EB: -</span>
-                            <span style="color: rgba(16, 185, 129, 0.5);">S1: -</span>
-                            <span style="color: rgba(239, 68, 68, 0.5);">S4: -</span>
-                            ${result.series.length === 4 ? `| <span style="color: rgba(255, 179, 0, 0.5);">ETF 종가: -</span>` : ''}
+                            ${getLegendHtml(null, true)}
                         </div>
                     </div>
                 `;
@@ -712,29 +761,14 @@
 
                 if (!data) {
                     dateLbl.innerText = '[-]';
-                    valsRow.innerHTML = `
-                        <span style="color: rgba(59, 130, 246, 0.5);">EB: -</span>
-                        <span style="color: rgba(16, 185, 129, 0.5);">S1: -</span>
-                        <span style="color: rgba(239, 68, 68, 0.5);">S4: -</span>
-                        ${result.series.length === 4 ? `| <span style="color: rgba(255, 179, 0, 0.5);">ETF 종가: -</span>` : ''}
-                    `;
+                    valsRow.innerHTML = getLegendHtml(null, true);
                     valsRow.style.color = 'var(--text-muted)';
                     return;
                 }
 
-                let priceHtml = '';
-                if (data.price !== null && data.price !== undefined) {
-                    priceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${formatPrice(data.price)}</span>`;
-                }
-
                 dateLbl.innerText = `[${data.date}]`;
                 valsRow.style.color = '#e2e8f0';
-                valsRow.innerHTML = `
-                    <span style="color: #3b82f6;">EB: ${data.early_buy}</span>
-                    <span style="color: #10b981;">S1: ${data.stage1}</span>
-                    <span style="color: #ef4444;">S4: ${data.stage4}</span>
-                    ${priceHtml}
-                `;
+                valsRow.innerHTML = getLegendHtml(data, true);
             }
 
             function timeToString(time) {
@@ -767,22 +801,13 @@
                     return;
                 }
 
-                let hoverValues = { date: timeStr, early_buy: 0, stage1: 0, stage4: 0, price: null, isHover: true };
-                let hasValue = false;
-
+                let hoverIdx = -1;
                 if (result.series.length > 0) {
-                    const firstSeries = result.series[0];
-                    const idx = firstSeries.data.findIndex(item => item.x === timeStr);
-                    if (idx !== -1) {
-                        hasValue = true;
-                        hoverValues.early_buy = result.series[0].data[idx].y;
-                        hoverValues.stage1 = result.series.length > 1 ? result.series[1].data[idx].y : 0;
-                        hoverValues.stage4 = result.series.length > 2 ? result.series[2].data[idx].y : 0;
-                        hoverValues.price = result.series.length === 4 ? result.series[3].data[idx].y : null;
-                    }
+                    hoverIdx = result.series[0].data.findIndex(item => item.x === timeStr);
                 }
 
-                if (hasValue) {
+                if (hoverIdx !== -1) {
+                    const hoverValues = getValuesForIndex(hoverIdx);
                     updateHoverLegend(hoverValues);
                 } else {
                     updateHoverLegend(null);

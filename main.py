@@ -1024,7 +1024,11 @@ async def api_history_trends(
     dates_set = dates_set[-1500:]
     dates_filter = set(dates_set)
     
-    counts = {d: {'early_buy': 0, 'stage1': 0, 'stage4': 0} for d in dates_set}
+    counts = {d: {
+        'early_buy': 0,
+        'stage1': 0, 'stage2': 0, 'stage3': 0, 'stage4': 0, 'stage5': 0, 'stage6': 0,
+        'total': 0
+    } for d in dates_set}
     for r in rows:
         d = r['Date']
         if d not in dates_filter:
@@ -1033,21 +1037,28 @@ async def api_history_trends(
         if t in counts[d]:
             counts[d][t] = r['count']
             
+    for d in dates_set:
+        counts[d]['total'] = sum(counts[d][f'stage{i}'] for i in range(1, 7))
+            
     data_by_type = {
         'early_buy': [],
-        'stage1': [],
-        'stage4': []
+        'stage1': [], 'stage2': [], 'stage3': [], 'stage4': [], 'stage5': [], 'stage6': [],
+        'total': []
     }
     
     for d in dates_set:
-        data_by_type['early_buy'].append({'x': d, 'y': counts[d]['early_buy']})
-        data_by_type['stage1'].append({'x': d, 'y': counts[d]['stage1']})
-        data_by_type['stage4'].append({'x': d, 'y': counts[d]['stage4']})
+        for key in data_by_type.keys():
+            data_by_type[key].append({'x': d, 'y': counts[d][key]})
         
     series_list = [
         {'name': 'Early Buy', 'type': 'area', 'data': data_by_type['early_buy']},
         {'name': 'Stage 1 (Stable Upward)', 'type': 'area', 'data': data_by_type['stage1']},
-        {'name': 'Stage 4 (Stable Downward)', 'type': 'area', 'data': data_by_type['stage4']}
+        {'name': 'Stage 2 (Upward Slowdown)', 'type': 'area', 'data': data_by_type['stage2']},
+        {'name': 'Stage 3 (Early Downward)', 'type': 'area', 'data': data_by_type['stage3']},
+        {'name': 'Stage 4 (Stable Downward)', 'type': 'area', 'data': data_by_type['stage4']},
+        {'name': 'Stage 5 (Downward Slowdown)', 'type': 'area', 'data': data_by_type['stage5']},
+        {'name': 'Stage 6 (Early Upward)', 'type': 'area', 'data': data_by_type['stage6']},
+        {'name': 'Total Tickers', 'type': 'line', 'data': data_by_type['total']}
     ]
     
     # Add ETF price series if sub_market is active
