@@ -92,9 +92,80 @@ def incremental_update(market_type='US', max_workers=20):
     
     conn.close()
 
-    # Target end_date should be today.
-    end_date = datetime.now().strftime('%Y-%m-%d')
+    # Target end_date should be today, but on weekends we treat Friday as the target.
+    now = datetime.now()
+    if now.weekday() == 5:  # Saturday
+        end_date_dt = now - timedelta(days=1)
+    elif now.weekday() == 6:  # Sunday
+        end_date_dt = now - timedelta(days=2)
+    else:
+        end_date_dt = now
+    end_date = end_date_dt.strftime('%Y-%m-%d')
     
+    # Fast Bulk Update Optimization for KR Market
+    if market_type == 'KR':
+        anchor_code = '005930'  # Samsung Electronics
+        last_date_str = max_date_dict.get(anchor_code)
+        if last_date_str:
+            last_date = datetime.strptime(last_date_str[:10], '%Y-%m-%d')
+            # Get missing business days (Mon-Fri)
+            date_range = pd.date_range(start=last_date + timedelta(days=1), end=datetime.now(), freq='B')
+            dates_to_update = [d.strftime('%Y-%m-%d') for d in date_range if d.strftime('%Y-%m-%d') <= end_date]
+            
+            if 1 <= len(dates_to_update) <= 10:
+                print(f"Detecting small gap ({len(dates_to_update)} business days). Attempting fast bulk date-wise update...")
+                try:
+                    from pykrx import stock as pykrx_stock
+                    bulk_conn = sqlite3.connect(db_path, timeout=30.0)
+                    
+                    for date_str in dates_to_update:
+                        date_pykrx = date_str.replace('-', '')
+                        print(f"Fetching all stock prices for date {date_str} in bulk...")
+                        
+                        # Fetch all tickers for this date
+                        df_bulk = pykrx_stock.get_market_ohlcv_by_ticker(date_pykrx, market="ALL")
+                        if df_bulk.empty:
+                            print(f"No trading data returned for {date_str} (possible holiday). Skipping.")
+                            continue
+                            
+                        # Format dataframe
+                        df_bulk = df_bulk.reset_index()
+                        df_bulk = df_bulk.rename(columns={
+                            '티커': 'Code',
+                            '시가': 'Open',
+                            '고가': 'High',
+                            '저가': 'Low',
+                            '종가': 'Close',
+                            '거래량': 'Volume'
+                        })
+                        
+                        # Keep only necessary columns and join with tickers metadata
+                        df_bulk = df_bulk[['Code', 'Open', 'High', 'Low', 'Close', 'Volume']]
+                        
+                        # Merge with tickers_df to get Name and Market
+                        df_merged = pd.merge(df_bulk, tickers_df[['Code', 'Name', 'Market']], on='Code', how='inner')
+                        df_merged['Date'] = f"{date_str} 00:00:00"
+                        
+                        # Rearrange columns to match database schema exactly
+                        db_columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Code', 'Name', 'Market']
+                        df_merged = df_merged[db_columns]
+                        
+                        # Write to database
+                        df_merged.to_sql(prices_table, bulk_conn, if_exists='append', index=False)
+                        print(f"Successfully saved {len(df_merged)} stock prices for {date_str} in bulk.")
+                        
+                    bulk_conn.commit()
+                    bulk_conn.close()
+                    print("Fast bulk update completed successfully!")
+                    return
+                except Exception as e:
+                    print(f"Fast bulk update failed: {e}. Falling back to individual thread-pool update...")
+                    if 'bulk_conn' in locals():
+                        try:
+                            bulk_conn.close()
+                        except:
+                            pass
+                            
     tasks = []
     for row in tickers_df.itertuples():
         code = getattr(row, 'Code', getattr(row, 'Symbol', None))

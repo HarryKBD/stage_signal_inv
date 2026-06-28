@@ -21,6 +21,7 @@
 - **`scan_buy_timing.py`**: 오늘 막 Stage 1에 진입한 종목을 포착하고 차트를 생성합니다.
 - **`scan_early_buy.py`**: **(선발대)** Stage 5/6에서 MACD 반등 신호가 포착된 종목을 찾아 `plot_macd_XXXXXX.png` 차트를 생성합니다.
 - **`visualize_kojiro.py`**: 캔들 차트, 이동평균선, 대순환 MACD를 포함한 고해상도 분석 이미지를 생성합니다.
+- **`signal_status.py`**: **(신설)** 특정 날짜(또는 최신일)의 지수별 세부 지표 상태 및 전략별 포지션 신호 현황을 CLI 환경에 예쁜 리포트로 출력해 주는 모니터링 도구입니다.
 
 
 ## 3. 사용 방법
@@ -34,6 +35,12 @@ uv run python incremental_update.py
 ```bash
 # 선발대(Early Buy) 신호 및 차트 생성
 uv run python scan_early_buy.py
+```
+
+### 특정 날짜(또는 오늘)의 지수 신호 및 지표 요약 리포트 (CLI)
+```bash
+uv run python signal_status.py            # 최신 영업일 기준 현황 보고
+uv run python signal_status.py 2026-06-18 # 특정 날짜 기준 현황 및 전일/5일평균 대비 증감 보고
 ```
 
 ### 특정 종목 상세 분석 차트 생성
