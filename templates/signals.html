@@ -237,6 +237,115 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(10, 11, 15, 0.85);
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .modal-overlay.active {
+        opacity: 1;
+    }
+
+    .modal-content {
+        background: rgba(22, 25, 32, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        width: 90%;
+        max-width: 800px;
+        padding: 25px;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+    }
+    
+    .modal-overlay.active .modal-content {
+        transform: scale(1);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 12px;
+    }
+
+    .modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .modal-close-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 20px;
+        cursor: pointer;
+        transition: color 0.2s ease;
+        padding: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-close-btn:hover {
+        color: #f87171;
+    }
+
+    .modal-chart-legend {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 10px 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    /* Open Chart Button */
+    .open-chart-btn {
+        background: rgba(59, 130, 246, 0.15);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        color: #60a5fa;
+        font-size: 11px;
+        font-weight: 700;
+        border-radius: 8px;
+        padding: 6px 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        transition: all 0.2s ease;
+        align-self: flex-start;
+    }
+
+    .open-chart-btn:hover {
+        background: rgba(59, 130, 246, 0.3);
+        border-color: #60a5fa;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        color: #ffffff;
+    }
 </style>
 {% endblock %}
 
@@ -291,6 +400,9 @@
                         현재 권장: <strong>{% if kospi200.strat3.position == 1 %}매수 진입 및 유지{% else %}현금 관망 대기{% endif %}</strong><br>
                         최근 신호: {{ kospi200.strat3.last_signal }} ({{ kospi200.strat3.signal_date }}, {{ "{:,.0f}원".format(kospi200.strat3.signal_price) }})
                     </div>
+                    <button class="open-chart-btn" onclick="openNetBreadthChart('kospi200')">
+                        <i class="fa-solid fa-chart-area"></i> 넷 브레드 차트 보기
+                    </button>
                 </div>
             </div>
 
@@ -393,6 +505,9 @@
                         현재 권장: <strong>{% if kosdaq150.strat3.position == 1 %}매수 진입 및 유지{% else %}현금 관망 대기{% endif %}</strong><br>
                         최근 신호: {{ kosdaq150.strat3.last_signal }} ({{ kosdaq150.strat3.signal_date }}, {{ "{:,.0f}원".format(kosdaq150.strat3.signal_price) }})
                     </div>
+                    <button class="open-chart-btn" onclick="openNetBreadthChart('kosdaq150')">
+                        <i class="fa-solid fa-chart-area"></i> 넷 브레드 차트 보기
+                    </button>
                 </div>
             </div>
 
@@ -450,7 +565,456 @@
                     </tbody>
                 </table>
             </div>
+
+        </div>
         </div>
     </div>
 </div>
+
+<!-- Modal for Net Breadth Chart -->
+<div id="chart-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h3 id="modal-chart-title" class="modal-title">
+                <i class="fa-solid fa-chart-area" style="color: var(--color-accent);"></i> 넷 브레드 추이 차트
+            </h3>
+            <button class="modal-close-btn" onclick="closeChartModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="modal-chart-legend" class="modal-chart-legend"></div>
+        <div id="modal-chart-container" style="width: 100%; height: 400px; position: relative;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let activeChart = null;
+
+    function openNetBreadthChart(indexType) {
+        const modal = document.getElementById('chart-modal');
+        modal.style.display = 'flex';
+        // Trigger reflow for transition
+        modal.offsetHeight;
+        modal.classList.add('active');
+
+        // Fetch data and render
+        renderNetBreadthChart(indexType);
+    }
+
+    function closeChartModal() {
+        const modal = document.getElementById('chart-modal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            if (activeChart) {
+                activeChart.remove();
+                activeChart = null;
+            }
+            document.getElementById('modal-chart-container').innerHTML = '';
+            document.getElementById('modal-chart-legend').innerHTML = '';
+        }, 300);
+    }
+
+    // Close modal when clicking outside content
+    document.getElementById('chart-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeChartModal();
+        }
+    });
+
+    function computeSMA(data, period) {
+        let sma = [];
+        for (let i = 0; i < data.length; i++) {
+            if (i < period - 1) {
+                sma.push({ time: data[i].time, value: null });
+            } else {
+                let sum = 0;
+                for (let j = 0; j < period; j++) {
+                    sum += data[i - j].value;
+                }
+                sma.push({ time: data[i].time, value: sum / period });
+            }
+        }
+        return sma;
+    }
+
+    async function renderNetBreadthChart(indexType) {
+        const container = document.getElementById('modal-chart-container');
+        container.innerHTML = '';
+        
+        // Add overlay canvas
+        const canvas = document.createElement('canvas');
+        canvas.style.position = 'absolute';
+        canvas.style.left = '0';
+        canvas.style.top = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '10'; // Draw on top of the chart canvas
+        canvas.className = 'chart-overlay-canvas';
+        container.appendChild(canvas);
+
+        const legendEl = document.getElementById('modal-chart-legend');
+        legendEl.innerHTML = '<div style="color: var(--text-muted); font-size:12px;">데이터를 불러오는 중...</div>';
+
+        const subMarket = indexType === 'kospi200' ? 'KOSPI200' : 'KOSDAQ150';
+        const titleText = indexType === 'kospi200' ? '코스피 200 동일가중 넷 브레드 추이' : '코스닥 150 넷 브레드 추이';
+        document.getElementById('modal-chart-title').innerHTML = `<i class="fa-solid fa-chart-area" style="color: var(--color-accent);"></i> ${titleText}`;
+
+        // Helper to convert date string "YYYY-MM-DD" to UTC timestamp in seconds
+        function dateToTimestamp(dStr) {
+            const parts = dStr.split('-');
+            return Date.UTC(
+                parseInt(parts[0], 10),
+                parseInt(parts[1], 10) - 1,
+                parseInt(parts[2], 10)
+            ) / 1000;
+        }
+
+        try {
+            const response = await fetch(`/api/history/trends?market=kor&sub_market=${subMarket}`);
+            const result = await response.json();
+
+            // Find Stage 1 and Stage 4 and ETF close
+            const s1 = result.series.find(s => s.name.includes('Stage 1'));
+            const s4 = result.series.find(s => s.name.includes('Stage 4'));
+            const etf = result.series.find(s => s.type === 'line' || s.name.includes('가격') || s.name.includes('ETF'));
+
+            if (!s1 || !s4) {
+                legendEl.innerHTML = '<div style="color: #ef4444; font-size:12px;">지표 데이터를 찾을 수 없습니다.</div>';
+                return;
+            }
+
+            // Build Net Breadth Data with UTC timestamps
+            const netBreadthData = [];
+            for (let i = 0; i < s1.data.length; i++) {
+                const dateStr = s1.data[i].x;
+                const netVal = s1.data[i].y - s4.data[i].y;
+                netBreadthData.push({ time: dateToTimestamp(dateStr), value: netVal });
+            }
+
+            // Compute SMA 10 (SMA time keys will also be Unix timestamps)
+            const rawSma = computeSMA(netBreadthData, 10);
+            const netSma10Data = rawSma.filter(item => item.value !== null);
+
+            // Compute Buy/Sell crossover signals (Strategy 3 logic)
+            const buyDates = [];
+            const sellDates = [];
+            let position = 0; // 0 = cash, 1 = long
+            for (let i = 1; i < netBreadthData.length; i++) {
+                const net = netBreadthData[i].value;
+                const sma = rawSma[i].value;
+                const prevNet = netBreadthData[i-1].value;
+                const prevSma = rawSma[i-1].value;
+                
+                if (sma === null || prevSma === null) continue;
+
+                if (position === 0) {
+                    if (net > sma && prevNet <= prevSma) {
+                        position = 1;
+                        buyDates.push(netBreadthData[i].time); // push Unix timestamp
+                    }
+                } else if (position === 1) {
+                    if (net < sma && prevNet >= prevSma) {
+                        position = 0;
+                        sellDates.push(netBreadthData[i].time); // push Unix timestamp
+                    }
+                }
+            }
+
+            // Build ETF Data with UTC timestamps
+            const etfData = etf ? etf.data.map(item => ({ time: dateToTimestamp(item.x), value: item.y })) : [];
+
+            // Initialize Lightweight Chart
+            const chart = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: 400,
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#94a3b8',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                rightPriceScale: {
+                    visible: etfData.length > 0,
+                    borderVisible: false,
+                    textColor: '#ffb300',
+                },
+                leftPriceScale: {
+                    visible: true,
+                    borderVisible: false,
+                    textColor: '#60a5fa',
+                },
+                timeScale: {
+                    borderVisible: false,
+                    rightOffset: 5,
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                }
+            });
+
+            activeChart = chart;
+
+            // 1. Add Net Breadth Area Series
+            const netSeries = chart.addAreaSeries({
+                priceScaleId: 'left',
+                title: 'Net Breadth',
+                lineColor: '#3b82f6',
+                topColor: 'rgba(59, 130, 246, 0.3)',
+                bottomColor: 'rgba(59, 130, 246, 0.0)',
+                lineWidth: 2,
+            });
+            netSeries.setData(netBreadthData);
+
+            // 2. Add Net SMA 10 Line Series
+            const smaSeries = chart.addLineSeries({
+                priceScaleId: 'left',
+                title: 'Net SMA 10',
+                color: '#fb923c',
+                lineWidth: 2,
+            });
+            smaSeries.setData(netSma10Data);
+
+            // 3. Add ETF Line Series
+            if (etfData.length > 0) {
+                const etfSeries = chart.addLineSeries({
+                    priceScaleId: 'right',
+                    title: etf.name,
+                    color: '#ffb300',
+                    lineWidth: 3,
+                });
+                etfSeries.setData(etfData);
+            }
+
+            // Time helper
+            function timeToString(time) {
+                if (!time) return null;
+                if (typeof time === 'string') return time;
+                if (typeof time === 'number') {
+                    const isSeconds = time < 10000000000;
+                    const dateObj = new Date(isSeconds ? time * 1000 : time);
+                    const y = dateObj.getUTCFullYear();
+                    const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+                    const d = String(dateObj.getUTCDate()).padStart(2, '0');
+                    return `${y}-${m}-${d}`;
+                }
+                if (typeof time === 'object' && time.year) {
+                    return `${time.year}-${String(time.month).padStart(2, '0')}-${String(time.day).padStart(2, '0')}`;
+                }
+                return null;
+            }
+
+            // Keep track of last index values for default legend
+            let lastIdx = netBreadthData.length - 1;
+            let lastDate = timeToString(netBreadthData[lastIdx].time);
+            let lastNet = netBreadthData[lastIdx].value;
+            let lastSmaVal = rawSma[lastIdx].value;
+            let lastEtfVal = etfData.length > 0 ? etfData[etfData.length - 1].value : null;
+
+            function formatPrice(val) {
+                if (val === null || val === undefined) return '';
+                return Math.round(val).toLocaleString() + '원';
+            }
+
+            function updateLegend(data) {
+                if (!data) {
+                    let lastPriceHtml = lastEtfVal !== null ? ` | <span style="color: #ffb300; font-weight:700;">ETF 종가: ${formatPrice(lastEtfVal)}</span>` : '';
+                    let smaValHtml = lastSmaVal !== null ? lastSmaVal.toFixed(1) : '-';
+                    legendEl.innerHTML = `
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">
+                            ● 최신 영업일 [${lastDate}]
+                        </div>
+                        <div style="display: flex; gap: 15px; font-size: 13px; font-weight: 600; color: #e2e8f0; flex-wrap: wrap;">
+                            <span style="color: #3b82f6;">Net Breadth: ${lastNet > 0 ? '+' : ''}${lastNet}</span>
+                            <span style="color: #fb923c;">Net SMA 10: ${smaValHtml}</span>
+                            ${lastPriceHtml}
+                        </div>
+                    `;
+                    return;
+                }
+
+                let priceHtml = data.price !== null && data.price !== undefined ? ` | <span style="color: #ffb300; font-weight:700;">ETF 종가: ${formatPrice(data.price)}</span>` : '';
+                let smaValHtml = data.sma !== null && data.sma !== undefined ? data.sma.toFixed(1) : '-';
+                legendEl.innerHTML = `
+                    <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">
+                        ● 마우스 포인터 위치 [${data.date}]
+                    </div>
+                    <div style="display: flex; gap: 15px; font-size: 13px; font-weight: 600; color: #e2e8f0; flex-wrap: wrap;">
+                        <span style="color: #3b82f6;">Net Breadth: ${data.net > 0 ? '+' : ''}${data.net}</span>
+                        <span style="color: #fb923c;">Net SMA 10: ${smaValHtml}</span>
+                        ${priceHtml}
+                    </div>
+                `;
+            }
+
+            // Canvas Drawing Logic
+            function drawVerticalLines() {
+                const cv = container.querySelector('.chart-overlay-canvas');
+                if (!cv) return;
+                
+                const rectContainer = container.getBoundingClientRect();
+                
+                // Fallback plotDiv matching
+                const divs = container.querySelectorAll('div');
+                let plotDiv = null;
+                
+                for (let i = 0; i < divs.length; i++) {
+                    const div = divs[i];
+                    if (div.id === 'modal-chart-container') continue;
+                    
+                    const rect = div.getBoundingClientRect();
+                    const leftOffset = rect.left - rectContainer.left;
+                    
+                    if (leftOffset > 10 && rect.height > 300 && rect.width > 200) {
+                        plotDiv = div;
+                        break;
+                    }
+                }
+                
+                // Fallback: if left price scale is not visible, find the first main wrapper div with height > 300
+                if (!plotDiv) {
+                    for (let i = 0; i < divs.length; i++) {
+                        const div = divs[i];
+                        if (div.id === 'modal-chart-container') continue;
+                        const rect = div.getBoundingClientRect();
+                        if (rect.height > 300 && rect.width > 200) {
+                            plotDiv = div;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!plotDiv) return;
+                
+                const rectMain = plotDiv.getBoundingClientRect();
+                
+                const leftOffset = rectMain.left - rectContainer.left;
+                const topOffset = rectMain.top - rectContainer.top;
+                
+                // Position our overlay canvas to match the main plot div exactly
+                cv.style.left = leftOffset + 'px';
+                cv.style.top = topOffset + 'px';
+                cv.style.width = rectMain.width + 'px';
+                cv.style.height = rectMain.height + 'px';
+                
+                const dpr = window.devicePixelRatio || 1;
+                cv.width = rectMain.width * dpr;
+                cv.height = rectMain.height * dpr;
+                
+                const ctx = cv.getContext('2d');
+                ctx.scale(dpr, dpr);
+                ctx.clearRect(0, 0, rectMain.width, rectMain.height);
+                
+                const timeScale = chart.timeScale();
+                const heightLimit = rectMain.height; // Height is exactly the plot area height
+                
+                // Draw BUY signals
+                buyDates.forEach(dTimestamp => {
+                    const x = timeScale.timeToCoordinate(dTimestamp);
+                    if (x !== null && x >= 0 && x <= rectMain.width) {
+                        ctx.beginPath();
+                        ctx.setLineDash([4, 4]);
+                        ctx.strokeStyle = 'rgba(34, 197, 94, 0.7)'; // Green dashed line
+                        ctx.lineWidth = 1.5;
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, heightLimit);
+                        ctx.stroke();
+                        
+                        // BUY label tag
+                        ctx.fillStyle = '#22c55e';
+                        ctx.font = 'bold 9px Outfit, sans-serif';
+                        ctx.fillText('BUY', x + 5, 20);
+                    }
+                });
+                
+                // Draw SELL (CASH) signals
+                sellDates.forEach(dTimestamp => {
+                    const x = timeScale.timeToCoordinate(dTimestamp);
+                    if (x !== null && x >= 0 && x <= rectMain.width) {
+                        ctx.beginPath();
+                        ctx.setLineDash([4, 4]);
+                        ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)'; // Red dashed line
+                        ctx.lineWidth = 1.5;
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, heightLimit);
+                        ctx.stroke();
+                        
+                        // SELL label tag
+                        ctx.fillStyle = '#ef4444';
+                        ctx.font = 'bold 9px Outfit, sans-serif';
+                        ctx.fillText('SELL', x + 5, 20);
+                    }
+                });
+            }
+
+            // Initial Legend
+            updateLegend(null);
+
+            // Crosshair subscribe
+            chart.subscribeCrosshairMove(param => {
+                if (!param.time || param.point === undefined || param.point.x < 0 || param.point.x > container.clientWidth || param.point.y < 0 || param.point.y > container.clientHeight) {
+                    updateLegend(null);
+                    return;
+                }
+
+                const timeStr = timeToString(param.time);
+                if (!timeStr) {
+                    updateLegend(null);
+                    return;
+                }
+
+                let hoverValues = { date: timeStr, net: 0, sma: null, price: null };
+                let hasValue = false;
+
+                const timeNum = typeof param.time === 'number' ? param.time : dateToTimestamp(timeStr);
+
+                // Lookup indices
+                const idx = netBreadthData.findIndex(item => item.time === timeNum);
+                if (idx !== -1) {
+                    hasValue = true;
+                    hoverValues.net = netBreadthData[idx].value;
+                    hoverValues.sma = rawSma[idx].value;
+                }
+
+                // Match ETF price
+                if (etfData.length > 0) {
+                    const etfIdx = etfData.findIndex(item => item.time === timeNum);
+                    if (etfIdx !== -1) {
+                        hoverValues.price = etfData[etfIdx].value;
+                    }
+                }
+
+                if (hasValue) {
+                    updateLegend(hoverValues);
+                } else {
+                    updateLegend(null);
+                }
+            });
+
+            // Initial draw with small delay to ensure size calculations are finished
+            setTimeout(drawVerticalLines, 100);
+
+            // Redraw on zoom/scroll
+            chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+                drawVerticalLines();
+            });
+
+            // Resize observer
+            const resizeObserver = new ResizeObserver(entries => {
+                if (entries.length === 0 || !entries[0].contentRect) return;
+                const { width } = entries[0].contentRect;
+                chart.resize(width, 400);
+                setTimeout(drawVerticalLines, 50);
+            });
+            resizeObserver.observe(container);
+
+        } catch (e) {
+            console.error("Failed to load or render modal Net Breadth chart:", e);
+            legendEl.innerHTML = '<div style="color: #ef4444; font-size:12px;">데이터 조회에 실패했습니다.</div>';
+        }
+    }
+</script>
 {% endblock %}

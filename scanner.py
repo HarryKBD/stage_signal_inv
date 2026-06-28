@@ -625,14 +625,21 @@ def get_cached_candidates(market):
     if market == 'kor':
         query = """
             SELECT e.Code, e.Name, e.Stage, e.SignalDate, e.DurationDays, e.Close, e.UpdatedAt,
-                   t.IsKOSPI200, t.IsKOSDAQ150
+                   t.IsKOSPI200, t.IsKOSDAQ150, 0 as IsSP500, 0 as IsNASDAQ100, 0 as IsDOW30
             FROM early_buy_signals e
             LEFT JOIN tickers t ON e.Code = t.Code
             WHERE e.Market = ? 
             ORDER BY e.DurationDays DESC
         """
     else:
-        query = "SELECT Code, Name, Stage, SignalDate, DurationDays, Close, UpdatedAt, 0 as IsKOSPI200, 0 as IsKOSDAQ150 FROM early_buy_signals WHERE Market = ? ORDER BY DurationDays DESC"
+        query = """
+            SELECT e.Code, e.Name, e.Stage, e.SignalDate, e.DurationDays, e.Close, e.UpdatedAt,
+                   0 as IsKOSPI200, 0 as IsKOSDAQ150, t.IsSP500, t.IsNASDAQ100, t.IsDOW30
+            FROM early_buy_signals e
+            LEFT JOIN us_tickers t ON e.Code = t.Symbol
+            WHERE e.Market = ? 
+            ORDER BY e.DurationDays DESC
+        """
     df = pd.read_sql_query(query, conn, params=(market,))
     conn.close()
     return df.to_dict(orient='records')
@@ -643,14 +650,21 @@ def get_cached_stage1(market):
     if market == 'kor':
         query = """
             SELECT s.Code, s.Name, s.Stage, s.EntryDate, s.DurationDays, s.Close, s.UpdatedAt,
-                   t.IsKOSPI200, t.IsKOSDAQ150
+                   t.IsKOSPI200, t.IsKOSDAQ150, 0 as IsSP500, 0 as IsNASDAQ100, 0 as IsDOW30
             FROM stage1_signals s
             LEFT JOIN tickers t ON s.Code = t.Code
             WHERE s.Market = ? 
             ORDER BY s.DurationDays ASC
         """
     else:
-        query = "SELECT Code, Name, Stage, EntryDate, DurationDays, Close, UpdatedAt, 0 as IsKOSPI200, 0 as IsKOSDAQ150 FROM stage1_signals WHERE Market = ? ORDER BY s.DurationDays ASC"
+        query = """
+            SELECT s.Code, s.Name, s.Stage, s.EntryDate, s.DurationDays, s.Close, s.UpdatedAt,
+                   0 as IsKOSPI200, 0 as IsKOSDAQ150, t.IsSP500, t.IsNASDAQ100, t.IsDOW30
+            FROM stage1_signals s
+            LEFT JOIN us_tickers t ON s.Code = t.Symbol
+            WHERE s.Market = ? 
+            ORDER BY s.DurationDays ASC
+        """
     df = pd.read_sql_query(query, conn, params=(market,))
     conn.close()
     return df.to_dict(orient='records')
@@ -661,14 +675,21 @@ def get_cached_stage4(market):
     if market == 'kor':
         query = """
             SELECT s.Code, s.Name, s.Stage, s.EntryDate, s.DurationDays, s.Close, s.UpdatedAt,
-                   t.IsKOSPI200, t.IsKOSDAQ150
+                   t.IsKOSPI200, t.IsKOSDAQ150, 0 as IsSP500, 0 as IsNASDAQ100, 0 as IsDOW30
             FROM stage4_signals s
             LEFT JOIN tickers t ON s.Code = t.Code
             WHERE s.Market = ? 
             ORDER BY s.DurationDays ASC
         """
     else:
-        query = "SELECT Code, Name, Stage, EntryDate, DurationDays, Close, UpdatedAt, 0 as IsKOSPI200, 0 as IsKOSDAQ150 FROM stage4_signals WHERE Market = ? ORDER BY s.DurationDays ASC"
+        query = """
+            SELECT s.Code, s.Name, s.Stage, s.EntryDate, s.DurationDays, s.Close, s.UpdatedAt,
+                   0 as IsKOSPI200, 0 as IsKOSDAQ150, t.IsSP500, t.IsNASDAQ100, t.IsDOW30
+            FROM stage4_signals s
+            LEFT JOIN us_tickers t ON s.Code = t.Symbol
+            WHERE s.Market = ? 
+            ORDER BY s.DurationDays ASC
+        """
     df = pd.read_sql_query(query, conn, params=(market,))
     conn.close()
     return df.to_dict(orient='records')

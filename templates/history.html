@@ -342,6 +342,14 @@
                 <button class="sub-market-btn" id="sub-kosdaq150" onclick="changeSubMarket('KOSDAQ150')">코스닥 150</button>
                 <button class="sub-market-btn" id="sub-kospi200equal" onclick="changeSubMarket('KOSPI200_EQUAL')">코스피200동일</button>
             </div>
+
+            <!-- US Sub-markets Toggle -->
+            <div class="sub-market-selector" id="us-sub-selector" style="display: none;">
+                <button class="sub-market-btn active" id="sub-us-all" onclick="changeSubMarket('ALL')">통합</button>
+                <button class="sub-market-btn" id="sub-us-sp500" onclick="changeSubMarket('SP500')">S&P 500</button>
+                <button class="sub-market-btn" id="sub-us-nasdaq100" onclick="changeSubMarket('NASDAQ100')">나스닥 100</button>
+                <button class="sub-market-btn" id="sub-us-dow30" onclick="changeSubMarket('DOW30')">다우 30</button>
+            </div>
         </div>
 
         <div class="date-select-wrapper">
@@ -478,15 +486,19 @@
         document.getElementById('market-kor').classList.toggle('active', market === 'kor');
         document.getElementById('market-us').classList.toggle('active', market === 'us');
         
-        // Show/Hide sub-market selector for KOR
-        const subSelector = document.getElementById('kor-sub-selector');
+        // Show/Hide sub-market selectors
+        const korSelector = document.getElementById('kor-sub-selector');
+        const usSelector = document.getElementById('us-sub-selector');
         if (market === 'kor') {
-            subSelector.style.display = 'flex';
+            korSelector.style.display = 'flex';
+            usSelector.style.display = 'none';
             currentSubMarket = 'ALL';
             updateSubMarketButtons('ALL');
         } else {
-            subSelector.style.display = 'none';
+            korSelector.style.display = 'none';
+            usSelector.style.display = 'flex';
             currentSubMarket = 'ALL';
+            updateSubMarketButtons('ALL');
         }
         
         // Re-populate dates list
@@ -513,12 +525,19 @@
     }
 
     function updateSubMarketButtons(activeSubMarket) {
-        document.getElementById('sub-all').classList.toggle('active', activeSubMarket === 'ALL');
-        document.getElementById('sub-kospi').classList.toggle('active', activeSubMarket === 'KOSPI');
-        document.getElementById('sub-kosdaq').classList.toggle('active', activeSubMarket === 'KOSDAQ');
-        document.getElementById('sub-kospi200').classList.toggle('active', activeSubMarket === 'KOSPI200');
-        document.getElementById('sub-kosdaq150').classList.toggle('active', activeSubMarket === 'KOSDAQ150');
-        document.getElementById('sub-kospi200equal').classList.toggle('active', activeSubMarket === 'KOSPI200_EQUAL');
+        if (currentMarket === 'kor') {
+            document.getElementById('sub-all').classList.toggle('active', activeSubMarket === 'ALL');
+            document.getElementById('sub-kospi').classList.toggle('active', activeSubMarket === 'KOSPI');
+            document.getElementById('sub-kosdaq').classList.toggle('active', activeSubMarket === 'KOSDAQ');
+            document.getElementById('sub-kospi200').classList.toggle('active', activeSubMarket === 'KOSPI200');
+            document.getElementById('sub-kosdaq150').classList.toggle('active', activeSubMarket === 'KOSDAQ150');
+            document.getElementById('sub-kospi200equal').classList.toggle('active', activeSubMarket === 'KOSPI200_EQUAL');
+        } else {
+            document.getElementById('sub-us-all').classList.toggle('active', activeSubMarket === 'ALL');
+            document.getElementById('sub-us-sp500').classList.toggle('active', activeSubMarket === 'SP500');
+            document.getElementById('sub-us-nasdaq100').classList.toggle('active', activeSubMarket === 'NASDAQ100');
+            document.getElementById('sub-us-dow30').classList.toggle('active', activeSubMarket === 'DOW30');
+        }
     }
 
     function populateDates(market) {
@@ -553,6 +572,10 @@
                 else if (subMarket === 'KOSPI200') marketLabel = '코스피 200 (KOSPI 200)';
                 else if (subMarket === 'KOSDAQ150') marketLabel = '코스닥 150 (KOSDAQ 150)';
                 else if (subMarket === 'KOSPI200_EQUAL') marketLabel = '코스피 200 동일가중';
+            } else {
+                if (subMarket === 'SP500') marketLabel = 'S&P 500 (SPY)';
+                else if (subMarket === 'NASDAQ100') marketLabel = 'NASDAQ 100 (QQQ)';
+                else if (subMarket === 'DOW30') marketLabel = 'DOW 30 (DIA)';
             }
             titleEl.innerHTML = `<i class="fa-solid fa-chart-area" style="color: var(--color-accent);"></i> 6-Month Signal Distribution Trend (${marketLabel})`;
 
@@ -561,10 +584,11 @@
             
             const container = document.querySelector("#trend-chart");
             container.innerHTML = '';
-            container.style.position = 'relative'; // For tooltip place            // 1. Create Chart
+            container.style.position = 'relative';
+
             const chart = LightweightCharts.createChart(container, {
                 width: container.clientWidth,
-                height: 480, // Increased height for better visibility
+                height: 480,
                 layout: {
                     background: { type: 'solid', color: 'transparent' },
                     textColor: '#94a3b8',
@@ -574,7 +598,7 @@
                     horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
                 },
                 rightPriceScale: {
-                    visible: result.series.length === 4, // Show only if ETF Price overlay exists
+                    visible: result.series.length === 4,
                     borderVisible: false,
                     textColor: '#ffb300',
                 },
@@ -592,24 +616,20 @@
                 }
             });
 
-            // Query Legend Overlay (Static element in DOM above the chart)
             const legendEl = document.getElementById('trend-chart-legend');
 
-            // 2. Define colors & types
             const seriesColors = [
-                { line: '#3b82f6', top: 'rgba(59, 130, 246, 0.3)', bottom: 'rgba(59, 130, 246, 0.0)' }, // Early Buy (Blue)
-                { line: '#10b981', top: 'rgba(16, 185, 129, 0.3)', bottom: 'rgba(16, 185, 129, 0.0)' }, // Stage 1 (Green)
-                { line: '#ef4444', top: 'rgba(239, 68, 68, 0.3)', bottom: 'rgba(239, 68, 68, 0.0)' }    // Stage 4 (Red)
+                { line: '#3b82f6', top: 'rgba(59, 130, 246, 0.3)', bottom: 'rgba(59, 130, 246, 0.0)' },
+                { line: '#10b981', top: 'rgba(16, 185, 129, 0.3)', bottom: 'rgba(16, 185, 129, 0.0)' },
+                { line: '#ef4444', top: 'rgba(239, 68, 68, 0.3)', bottom: 'rgba(239, 68, 68, 0.0)' }
             ];
 
             const addedSeries = [];
 
-            // Add Area Series for Signal Counts (Left Y-Axis)
             for (let i = 0; i < 3; i++) {
                 if (i >= result.series.length) break;
                 const s = result.series[i];
                 const color = seriesColors[i];
-                
                 const areaSeries = chart.addAreaSeries({
                     priceScaleId: 'left',
                     title: s.name,
@@ -618,13 +638,11 @@
                     bottomColor: color.bottom,
                     lineWidth: 2,
                 });
-                
                 const data = s.data.map(item => ({ time: item.x, value: item.y }));
                 areaSeries.setData(data);
                 addedSeries.push({ series: areaSeries, name: s.name, color: color.line, isPrice: false });
             }
 
-            // Add Line Series for ETF Close Price (Right Y-Axis)
             if (result.series.length === 4) {
                 const s = result.series[3];
                 const lineSeries = chart.addLineSeries({
@@ -638,7 +656,6 @@
                 addedSeries.push({ series: lineSeries, name: s.name, color: '#ffb300', isPrice: true });
             }
 
-            // Compute last day (most recent) values for default display
             let lastDayValues = { date: 'N/A', early_buy: 0, stage1: 0, stage4: 0, price: null };
             if (result.series.length > 0 && result.series[0].data.length > 0) {
                 const len = result.series[0].data.length;
@@ -650,14 +667,16 @@
                 lastDayValues.price = result.series.length === 4 ? result.series[3].data[lastIdx].y : null;
             }
 
-            // Legend renderer helper (Initialize layout with pinned latest values)
+            function formatPrice(val) {
+                if (val === null || val === undefined) return '';
+                return market === 'kor' ? Math.round(val).toLocaleString() + '원' : '$' + parseFloat(val).toFixed(2);
+            }
+
             function initChartLegend() {
                 let lastPriceHtml = '';
                 if (lastDayValues.price !== null && lastDayValues.price !== undefined) {
-                    const priceFormatted = Math.round(lastDayValues.price).toLocaleString() + '원';
-                    lastPriceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${priceFormatted}</span>`;
+                    lastPriceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${formatPrice(lastDayValues.price)}</span>`;
                 }
-                
                 legendEl.innerHTML = `
                     <div style="margin-bottom: 6px;">
                         <div style="font-weight: 700; color: var(--text-muted); font-size: 10px; margin-bottom: 2px; text-transform: uppercase;">
@@ -678,16 +697,14 @@
                             <span style="color: rgba(59, 130, 246, 0.5);">EB: -</span>
                             <span style="color: rgba(16, 185, 129, 0.5);">S1: -</span>
                             <span style="color: rgba(239, 68, 68, 0.5);">S4: -</span>
-                            | <span style="color: rgba(255, 179, 0, 0.5);">ETF 종가: -</span>
+                            ${result.series.length === 4 ? `| <span style="color: rgba(255, 179, 0, 0.5);">ETF 종가: -</span>` : ''}
                         </div>
                     </div>
                 `;
             }
 
-            // Initialize legend layout
             initChartLegend();
 
-            // Hover updates renderer helper
             function updateHoverLegend(data) {
                 const dateLbl = document.getElementById('legend-hover-date');
                 const valsRow = document.getElementById('legend-hover-vals');
@@ -699,7 +716,7 @@
                         <span style="color: rgba(59, 130, 246, 0.5);">EB: -</span>
                         <span style="color: rgba(16, 185, 129, 0.5);">S1: -</span>
                         <span style="color: rgba(239, 68, 68, 0.5);">S4: -</span>
-                        | <span style="color: rgba(255, 179, 0, 0.5);">ETF 종가: -</span>
+                        ${result.series.length === 4 ? `| <span style="color: rgba(255, 179, 0, 0.5);">ETF 종가: -</span>` : ''}
                     `;
                     valsRow.style.color = 'var(--text-muted)';
                     return;
@@ -707,8 +724,7 @@
 
                 let priceHtml = '';
                 if (data.price !== null && data.price !== undefined) {
-                    const priceFormatted = Math.round(data.price).toLocaleString() + '원';
-                    priceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${priceFormatted}</span>`;
+                    priceHtml = ` | <span style="color: #ffb300; font-weight: 700;">ETF 종가: ${formatPrice(data.price)}</span>`;
                 }
 
                 dateLbl.innerText = `[${data.date}]`;
@@ -721,31 +737,19 @@
                 `;
             }
 
-            // 3. Create Tooltip element
-            const tooltip = document.createElement('div');
-            tooltip.style.position = 'absolute';
-            tooltip.style.display = 'none';
-            tooltip.style.padding = '10px 14px';
-            tooltip.style.background = 'rgba(22, 25, 32, 0.95)';
-            tooltip.style.backdropFilter = 'blur(8px)';
-            tooltip.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-            tooltip.style.borderRadius = '10px';
-            tooltip.style.color = '#e2e8f0';
-            tooltip.style.fontSize = '12px';
-            tooltip.style.pointerEvents = 'none';
-            tooltip.style.zIndex = '100';
-            tooltip.style.boxShadow = '0 8px 32px 0 rgba(0, 0, 0, 0.5)';
-            container.appendChild(tooltip);
-
-            // Time helper
             function timeToString(time) {
                 if (!time) return null;
                 if (typeof time === 'string') return time;
-                if (typeof time === 'object' && time.year) {
-                    const y = time.year;
-                    const m = String(time.month).padStart(2, '0');
-                    const d = String(time.day).padStart(2, '0');
+                if (typeof time === 'number') {
+                    const isSeconds = time < 10000000000;
+                    const dateObj = new Date(isSeconds ? time * 1000 : time);
+                    const y = dateObj.getUTCFullYear();
+                    const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+                    const d = String(dateObj.getUTCDate()).padStart(2, '0');
                     return `${y}-${m}-${d}`;
+                }
+                if (typeof time === 'object' && time.year) {
+                    return `${time.year}-${String(time.month).padStart(2, '0')}-${String(time.day).padStart(2, '0')}`;
                 }
                 return null;
             }
@@ -753,57 +757,34 @@
             // 4. Handle Crosshair Moves
             chart.subscribeCrosshairMove(param => {
                 if (!param.time || param.point === undefined || param.point.x < 0 || param.point.x > container.clientWidth || param.point.y < 0 || param.point.y > container.clientHeight) {
-                    tooltip.style.display = 'none';
                     updateHoverLegend(null);
                     return;
                 }
 
                 const timeStr = timeToString(param.time);
-                let html = `<div style="font-weight: 700; margin-bottom: 6px; color: var(--text-muted);">${timeStr}</div>`;
+                if (!timeStr) {
+                    updateHoverLegend(null);
+                    return;
+                }
 
-                let hasValue = false;
                 let hoverValues = { date: timeStr, early_buy: 0, stage1: 0, stage4: 0, price: null, isHover: true };
+                let hasValue = false;
 
-                addedSeries.forEach(sItem => {
-                    const price = param.seriesPrices.get(sItem.series);
-                    if (price !== undefined && price !== null) {
+                if (result.series.length > 0) {
+                    const firstSeries = result.series[0];
+                    const idx = firstSeries.data.findIndex(item => item.x === timeStr);
+                    if (idx !== -1) {
                         hasValue = true;
-                        
-                        if (sItem.name.includes('Early Buy')) hoverValues.early_buy = price;
-                        else if (sItem.name.includes('Stage 1')) hoverValues.stage1 = price;
-                        else if (sItem.name.includes('Stage 4')) hoverValues.stage4 = price;
-                        else if (sItem.isPrice) hoverValues.price = price;
-
-                        const valFormatted = sItem.isPrice ? Math.round(price).toLocaleString() + '원' : price;
-                        html += `<div style="display: flex; justify-content: space-between; gap: 15px; margin-bottom: 2px;">
-                            <span style="color: ${sItem.color}; font-weight: 600;">● ${sItem.name}</span>
-                            <span style="font-family: monospace; font-weight: 700;">${valFormatted}</span>
-                        </div>`;
+                        hoverValues.early_buy = result.series[0].data[idx].y;
+                        hoverValues.stage1 = result.series.length > 1 ? result.series[1].data[idx].y : 0;
+                        hoverValues.stage4 = result.series.length > 2 ? result.series[2].data[idx].y : 0;
+                        hoverValues.price = result.series.length === 4 ? result.series[3].data[idx].y : null;
                     }
-                });
+                }
 
                 if (hasValue) {
-                    tooltip.innerHTML = html;
-                    tooltip.style.display = 'block';
-                    
-                    const tooltipWidth = 220;
-                    const tooltipHeight = 120;
-                    let left = param.point.x + 15;
-                    let top = param.point.y + 15;
-                    
-                    if (left + tooltipWidth > container.clientWidth) {
-                        left = param.point.x - tooltipWidth - 15;
-                    }
-                    if (top + tooltipHeight > container.clientHeight) {
-                        top = param.point.y - tooltipHeight - 15;
-                    }
-                    
-                    tooltip.style.left = left + 'px';
-                    tooltip.style.top = top + 'px';
-
                     updateHoverLegend(hoverValues);
                 } else {
-                    tooltip.style.display = 'none';
                     updateHoverLegend(null);
                 }
             });
@@ -892,6 +873,18 @@
                 } else if (item.is_kosdaq150 === 1) {
                     indexBadgeHtml = '<span class="badge-index badge-kosdaq150">코스닥 150</span>';
                 }
+            } else if (currentMarket === 'us') {
+                let badges = [];
+                if (item.is_sp500 === 1) {
+                    badges.push('<span class="badge-index badge-sp500">S&P 500</span>');
+                }
+                if (item.is_nasdaq100 === 1) {
+                    badges.push('<span class="badge-index badge-nasdaq100">나스닥 100</span>');
+                }
+                if (item.is_dow30 === 1) {
+                    badges.push('<span class="badge-index badge-dow30">다우 30</span>');
+                }
+                indexBadgeHtml = badges.join(' ');
             }
 
             div.innerHTML = `

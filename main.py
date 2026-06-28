@@ -9,6 +9,7 @@ from scanner import get_cached_candidates, get_cached_stage1, get_cached_stage4,
 import os
 
 app = FastAPI(title="Kojiro Moving Average Grand Cycle Analyzer")
+# Trigger uvicorn reload history
 
 # Create templates and static directories if they don't exist
 os.makedirs("templates", exist_ok=True)
@@ -819,7 +820,7 @@ async def history_page(request: Request):
 async def api_history(
     date: str = Query(...),
     market: str = Query('kor', pattern='^(kor|us)$'),
-    sub_market: str = Query('ALL', pattern='^(KOSPI|KOSDAQ|KOSPI200|KOSDAQ150|KOSPI200_EQUAL|ALL)$')
+    sub_market: str = Query('ALL', pattern='^(KOSPI|KOSDAQ|KOSPI200|KOSDAQ150|KOSPI200_EQUAL|SP500|NASDAQ100|DOW30|ALL)$')
 ):
     conn = get_db_connection()
     # 1. Fetch current date signals
@@ -838,15 +839,31 @@ async def api_history(
             cond_params = (date,)
             
         query_curr = f"""
-            SELECT h.Code, h.Name, h.SignalType, h.Stage, h.Close, t.IsKOSPI200, t.IsKOSDAQ150
+            SELECT h.Code, h.Name, h.SignalType, h.Stage, h.Close, t.IsKOSPI200, t.IsKOSDAQ150,
+                   0 as IsSP500, 0 as IsNASDAQ100, 0 as IsDOW30
             FROM historical_signals h
             LEFT JOIN tickers t ON h.Code = t.Code
             WHERE h.Date = ? AND h.Market = 'kor' AND {market_cond}
         """
         curr_rows = conn.execute(query_curr, cond_params).fetchall()
     else:
-        query_curr = "SELECT Code, Name, SignalType, Stage, Close, 0 as IsKOSPI200, 0 as IsKOSDAQ150 FROM historical_signals WHERE Date = ? AND Market = ?"
-        curr_rows = conn.execute(query_curr, (date, market)).fetchall()
+        if sub_market == 'SP500':
+            market_cond = "t.IsSP500 = 1"
+        elif sub_market == 'NASDAQ100':
+            market_cond = "t.IsNASDAQ100 = 1"
+        elif sub_market == 'DOW30':
+            market_cond = "t.IsDOW30 = 1"
+        else: # ALL
+            market_cond = "1=1"
+            
+        query_curr = f"""
+            SELECT h.Code, h.Name, h.SignalType, h.Stage, h.Close, 0 as IsKOSPI200, 0 as IsKOSDAQ150,
+                   t.IsSP500, t.IsNASDAQ100, t.IsDOW30
+            FROM historical_signals h
+            LEFT JOIN us_tickers t ON h.Code = t.Symbol
+            WHERE h.Date = ? AND h.Market = 'us' AND {market_cond}
+        """
+        curr_rows = conn.execute(query_curr, (date,)).fetchall()
     
     # 2. Fetch previous trading date
     prev_date_row = conn.execute(
@@ -873,15 +890,31 @@ async def api_history(
                 cond_params = (prev_date,)
                 
             query_prev = f"""
-                SELECT h.Code, h.Name, h.SignalType, h.Stage, h.Close, t.IsKOSPI200, t.IsKOSDAQ150
+                SELECT h.Code, h.Name, h.SignalType, h.Stage, h.Close, t.IsKOSPI200, t.IsKOSDAQ150,
+                       0 as IsSP500, 0 as IsNASDAQ100, 0 as IsDOW30
                 FROM historical_signals h
                 LEFT JOIN tickers t ON h.Code = t.Code
                 WHERE h.Date = ? AND h.Market = 'kor' AND {market_cond}
             """
             prev_rows = conn.execute(query_prev, cond_params).fetchall()
         else:
-            query_prev = "SELECT Code, Name, SignalType, Stage, Close, 0 as IsKOSPI200, 0 as IsKOSDAQ150 FROM historical_signals WHERE Date = ? AND Market = ?"
-            prev_rows = conn.execute(query_prev, (prev_date, market)).fetchall()
+            if sub_market == 'SP500':
+                market_cond = "t.IsSP500 = 1"
+            elif sub_market == 'NASDAQ100':
+                market_cond = "t.IsNASDAQ100 = 1"
+            elif sub_market == 'DOW30':
+                market_cond = "t.IsDOW30 = 1"
+            else: # ALL
+                market_cond = "1=1"
+                
+            query_prev = f"""
+                SELECT h.Code, h.Name, h.SignalType, h.Stage, h.Close, 0 as IsKOSPI200, 0 as IsKOSDAQ150,
+                       t.IsSP500, t.IsNASDAQ100, t.IsDOW30
+                FROM historical_signals h
+                LEFT JOIN us_tickers t ON h.Code = t.Symbol
+                WHERE h.Date = ? AND h.Market = 'us' AND {market_cond}
+            """
+            prev_rows = conn.execute(query_prev, (prev_date,)).fetchall()
         
     conn.close()
     
@@ -897,7 +930,10 @@ async def api_history(
                     'stage': r['Stage'],
                     'close': r['Close'],
                     'is_kospi200': r['IsKOSPI200'] if r['IsKOSPI200'] is not None else 0,
-                    'is_kosdaq150': r['IsKOSDAQ150'] if r['IsKOSDAQ150'] is not None else 0
+                    'is_kosdaq150': r['IsKOSDAQ150'] if r['IsKOSDAQ150'] is not None else 0,
+                    'is_sp500': r['IsSP500'] if ('IsSP500' in r.keys() and r['IsSP500'] is not None) else 0,
+                    'is_nasdaq100': r['IsNASDAQ100'] if ('IsNASDAQ100' in r.keys() and r['IsNASDAQ100'] is not None) else 0,
+                    'is_dow30': r['IsDOW30'] if ('IsDOW30' in r.keys() and r['IsDOW30'] is not None) else 0
                 }
         return segs
         
@@ -932,7 +968,7 @@ async def api_history(
 @app.get("/api/history/trends")
 async def api_history_trends(
     market: str = Query('kor', pattern='^(kor|us)$'),
-    sub_market: str = Query('ALL', pattern='^(KOSPI|KOSDAQ|KOSPI200|KOSDAQ150|KOSPI200_EQUAL|ALL)$')
+    sub_market: str = Query('ALL', pattern='^(KOSPI|KOSDAQ|KOSPI200|KOSDAQ150|KOSPI200_EQUAL|SP500|NASDAQ100|DOW30|ALL)$')
 ):
     conn = get_db_connection()
     if market == 'kor' and sub_market in ('KOSPI', 'KOSDAQ', 'KOSPI200', 'KOSDAQ150', 'KOSPI200_EQUAL'):
@@ -955,6 +991,23 @@ async def api_history_trends(
             ORDER BY h.Date ASC
         """
         rows = conn.execute(query, cond_params).fetchall()
+    elif market == 'us' and sub_market in ('SP500', 'NASDAQ100', 'DOW30'):
+        if sub_market == 'SP500':
+            market_cond = "t.IsSP500 = 1"
+        elif sub_market == 'NASDAQ100':
+            market_cond = "t.IsNASDAQ100 = 1"
+        else: # DOW30
+            market_cond = "t.IsDOW30 = 1"
+            
+        query = f"""
+            SELECT h.Date, h.SignalType, COUNT(*) as count 
+            FROM historical_signals h
+            JOIN us_tickers t ON h.Code = t.Symbol
+            WHERE h.Market = 'us' AND {market_cond}
+            GROUP BY h.Date, h.SignalType 
+            ORDER BY h.Date ASC
+        """
+        rows = conn.execute(query).fetchall()
     else:
         query = """
             SELECT Date, SignalType, COUNT(*) as count 
@@ -997,51 +1050,79 @@ async def api_history_trends(
         {'name': 'Stage 4 (Stable Downward)', 'type': 'area', 'data': data_by_type['stage4']}
     ]
     
-    # Add ETF price series if sub_market is KOSPI, KOSDAQ, KOSPI200, KOSDAQ150, or KOSPI200_EQUAL
-    if market == 'kor' and sub_market in ('KOSPI', 'KOSDAQ', 'KOSPI200', 'KOSDAQ150', 'KOSPI200_EQUAL') and dates_set:
-        min_date_str = dates_set[0]
-        if sub_market in ('KOSPI', 'KOSPI200'):
-            etf_code = '226490'
-            etf_name = 'KODEX 코스피 가격'
-        elif sub_market == 'KOSPI200_EQUAL':
-            etf_code = '252650'
-            etf_name = 'KODEX 200동일가중 가격'
-        else:
-            etf_code = '229200'
-            etf_name = 'KODEX 코스닥150 가격'
+    # Add ETF price series if sub_market is active
+    if dates_set:
+        is_etf_needed = False
+        etf_code = None
+        etf_name = None
+        prices_table = 'stock_prices'
         
-        # Query ETF prices since min_date_str
-        etf_rows = conn.execute("""
-            SELECT Date, Close 
-            FROM stock_prices 
-            WHERE Code = ? AND Date >= ? 
-            ORDER BY Date ASC
-        """, (etf_code, min_date_str + " 00:00:00")).fetchall()
-        
-        # Map date strings to float closes
-        etf_map = {}
-        for r in etf_rows:
-            d_str = r['Date'][:10]
-            etf_map[d_str] = float(r['Close'])
+        if market == 'kor' and sub_market in ('KOSPI', 'KOSDAQ', 'KOSPI200', 'KOSDAQ150', 'KOSPI200_EQUAL'):
+            is_etf_needed = True
+            prices_table = 'stock_prices'
+            if sub_market in ('KOSPI', 'KOSPI200'):
+                etf_code = '226490'
+                etf_name = 'KODEX 코스피 가격'
+            elif sub_market == 'KOSPI200_EQUAL':
+                etf_code = '252650'
+                etf_name = 'KODEX 200동일가중 가격'
+            else:
+                etf_code = '229200'
+                etf_name = 'KODEX 코스닥150 가격'
+        elif market == 'us' and sub_market in ('SP500', 'NASDAQ100', 'DOW30'):
+            is_etf_needed = True
+            prices_table = 'us_stock_prices'
+            if sub_market == 'SP500':
+                etf_code = 'SPY'
+                etf_name = 'SPY ETF 가격'
+            elif sub_market == 'NASDAQ100':
+                etf_code = 'QQQ'
+                etf_name = 'QQQ ETF 가격'
+            else:
+                etf_code = 'DIA'
+                etf_name = 'DIA ETF 가격'
+                
+        if is_etf_needed:
+            min_date_str = dates_set[0]
+            if prices_table == 'stock_prices':
+                etf_rows = conn.execute("""
+                    SELECT Date, Close 
+                    FROM stock_prices 
+                    WHERE Code = ? AND Date >= ? 
+                    ORDER BY Date ASC
+                """, (etf_code, min_date_str + " 00:00:00")).fetchall()
+            else:
+                # us_stock_prices table uses "index" for Date
+                etf_rows = conn.execute("""
+                    SELECT "index" as Date, Close 
+                    FROM us_stock_prices 
+                    WHERE Code = ? AND "index" >= ? 
+                    ORDER BY "index" ASC
+                """, (etf_code, min_date_str + " 00:00:00")).fetchall()
+                
+            # Map date strings to float closes
+            etf_map = {}
+            for r in etf_rows:
+                d_str = r['Date'][:10]
+                etf_map[d_str] = float(r['Close'])
+                
+            # Build aligned data series (forward-fill missing dates)
+            etf_data = []
+            last_val = None
+            for d in dates_set:
+                val = etf_map.get(d)
+                if val is not None:
+                    last_val = val
+                elif last_val is None:
+                    last_val = 0.0
+                etf_data.append({'x': d, 'y': last_val})
+                
+            series_list.append({
+                'name': etf_name,
+                'type': 'line',
+                'data': etf_data
+            })
             
-        # Build aligned data series (forward-fill missing dates)
-        etf_data = []
-        last_val = None
-        for d in dates_set:
-            val = etf_map.get(d)
-            if val is not None:
-                last_val = val
-            elif last_val is None:
-                # Fallback if first date is missing
-                last_val = 0.0
-            etf_data.append({'x': d, 'y': last_val})
-            
-        series_list.append({
-            'name': etf_name,
-            'type': 'line',
-            'data': etf_data
-        })
-        
     conn.close()
     
     return {
